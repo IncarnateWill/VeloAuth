@@ -137,7 +137,7 @@ public class CommandHandler {
             // Sprawdź IP-based rate limiting PRZED sprawdzeniem autoryzacji
             InetAddress playerAddress = ValidationUtils.getPlayerAddress(player);
             if (playerAddress != null && ipRateLimiter.isRateLimited(playerAddress)) {
-                player.sendMessage(ValidationUtils.createErrorComponent(messages.get("auth.login.too_many_attempts", "5")));
+                player.sendMessage(ValidationUtils.createErrorComponent(messages.get(messages.getCurrentLanguage(), "auth.login.too_many_attempts", "5")));
                 logger.warn(SECURITY_MARKER, "IP {} zablokowany za rate limiting ({} prób w 5 min)",
                         playerAddress.getHostAddress(), ipRateLimiter.getAttempts(playerAddress));
                 return;
@@ -308,7 +308,7 @@ public class CommandHandler {
             // Sprawdź IP-based rate limiting dla rejestracji
             InetAddress playerAddress = ValidationUtils.getPlayerAddress(player);
             if (playerAddress != null && ipRateLimiter.isRateLimited(playerAddress)) {
-                player.sendMessage(ValidationUtils.createErrorComponent(messages.get("auth.login.too_many_attempts", "5")));
+                player.sendMessage(ValidationUtils.createErrorComponent(messages.get(messages.getCurrentLanguage(), "auth.login.too_many_attempts", "5")));
                 logger.warn("IP {} zablokowany za rate limiting podczas rejestracji ({} prób)",
                         playerAddress.getHostAddress(), ipRateLimiter.getAttempts(playerAddress));
                 return;
