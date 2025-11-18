@@ -2,7 +2,6 @@ package net.rafalohaki.veloauth.integration;
 
 import net.rafalohaki.veloauth.database.DatabaseConfig;
 import net.rafalohaki.veloauth.database.DatabaseManager;
-import net.rafalohaki.veloauth.database.DatabaseManager.DbResult;
 import net.rafalohaki.veloauth.i18n.Messages;
 import net.rafalohaki.veloauth.model.RegisteredPlayer;
 
@@ -17,8 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 class TestDatabaseManager extends DatabaseManager {
 
     private CompletableFuture<Boolean> initResult = CompletableFuture.completedFuture(true);
-    private final Map<String, CompletableFuture<DbResult<RegisteredPlayer>>> findResults = new ConcurrentHashMap<>();
-    private final Map<String, CompletableFuture<DbResult<Boolean>>> premiumResults = new ConcurrentHashMap<>();
+    private final Map<String, CompletableFuture<DatabaseManager.DbResult<RegisteredPlayer>>> findResults = new ConcurrentHashMap<>();
+    private final Map<String, CompletableFuture<DatabaseManager.DbResult<Boolean>>> premiumResults = new ConcurrentHashMap<>();
 
     TestDatabaseManager(DatabaseConfig config, Messages messages) {
         super(config, messages);
@@ -33,31 +32,31 @@ class TestDatabaseManager extends DatabaseManager {
         this.initResult = initResult != null ? initResult : CompletableFuture.completedFuture(true);
     }
 
-    void setFindResult(String nickname, CompletableFuture<DbResult<RegisteredPlayer>> result) {
+    void setFindResult(String nickname, CompletableFuture<DatabaseManager.DbResult<RegisteredPlayer>> result) {
         if (nickname != null && result != null) {
             findResults.put(nickname.toLowerCase(), result);
         }
     }
 
-    void setPremiumResult(String username, CompletableFuture<DbResult<Boolean>> result) {
+    void setPremiumResult(String username, CompletableFuture<DatabaseManager.DbResult<Boolean>> result) {
         if (username != null && result != null) {
             premiumResults.put(username, result);
         }
     }
 
     @Override
-    public CompletableFuture<DbResult<RegisteredPlayer>> findPlayerByNickname(String nickname) {
+    public CompletableFuture<DatabaseManager.DbResult<RegisteredPlayer>> findPlayerByNickname(String nickname) {
         if (nickname == null || nickname.isEmpty()) {
-            return CompletableFuture.completedFuture(DbResult.success(null));
+            return CompletableFuture.completedFuture(DatabaseManager.DbResult.success(null));
         }
-        return findResults.getOrDefault(nickname.toLowerCase(), CompletableFuture.completedFuture(DbResult.success(null)));
+        return findResults.getOrDefault(nickname.toLowerCase(), CompletableFuture.completedFuture(DatabaseManager.DbResult.success(null)));
     }
 
     @Override
-    public CompletableFuture<DbResult<Boolean>> isPremium(String username) {
+    public CompletableFuture<DatabaseManager.DbResult<Boolean>> isPremium(String username) {
         if (username == null || username.isEmpty()) {
-            return CompletableFuture.completedFuture(DbResult.success(false));
+            return CompletableFuture.completedFuture(DatabaseManager.DbResult.success(false));
         }
-        return premiumResults.getOrDefault(username, CompletableFuture.completedFuture(DbResult.success(false)));
+        return premiumResults.getOrDefault(username, CompletableFuture.completedFuture(DatabaseManager.DbResult.success(false)));
     }
 }
