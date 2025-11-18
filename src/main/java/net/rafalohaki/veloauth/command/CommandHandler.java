@@ -143,8 +143,8 @@ public class CommandHandler {
             CommandSource source = invocation.source();
             String[] args = invocation.arguments();
 
-            if (!(source instanceof Player player)) {
-                source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_PLAYER_ONLY)));
+            Player player = CommandHelper.validatePlayerSource(source, messages);
+            if (player == null) {
                 return;
             }
 
@@ -181,14 +181,8 @@ public class CommandHandler {
             }
 
             // Asynchroniczne logowanie z Virtual Threads
-            // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
-            CompletableFuture.runAsync(() -> processLogin(player, password, playerAddress),
-                            VirtualThreadExecutorProvider.getVirtualExecutor())
-                    .exceptionally(throwable -> {
-                        logger.error("Błąd podczas asynchronicznego logowania gracza: {}", player.getUsername(), throwable);
-                        player.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
-                        return null;
-                    });
+            CommandHelper.runAsyncCommand(() -> processLogin(player, password, playerAddress),
+                    player.getUsername(), messages, source, StringConstants.ERROR_DATABASE_QUERY);
         }
 
         private void processLogin(Player player, String password, InetAddress playerAddress) {
@@ -305,8 +299,8 @@ public class CommandHandler {
             CommandSource source = invocation.source();
             String[] args = invocation.arguments();
 
-            if (!(source instanceof Player player)) {
-                source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_PLAYER_ONLY)));
+            Player player = CommandHelper.validatePlayerSource(source, messages);
+            if (player == null) {
                 return;
             }
 
@@ -346,20 +340,8 @@ public class CommandHandler {
             }
 
             // Asynchroniczna rejestracja z Virtual Threads
-            // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
-            CompletableFuture.runAsync(() -> processRegistration(player, password),
-                            VirtualThreadExecutorProvider.getVirtualExecutor())
-                    .orTimeout(30, TimeUnit.SECONDS)
-                    .exceptionally(throwable -> {
-                        if (throwable instanceof java.util.concurrent.TimeoutException) {
-                            logger.error("Timeout during registration for {}", player.getUsername());
-                            player.sendMessage(ValidationUtils.createErrorComponent(messages.get("auth.registration.timeout")));
-                        } else {
-                            logger.error("Błąd podczas asynchronicznej rejestracji gracza: {}", player.getUsername(), throwable);
-                            player.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
-                        }
-                        return null;
-                    });
+            CommandHelper.runAsyncCommandWithTimeout(() -> processRegistration(player, password),
+                    player.getUsername(), messages, source, StringConstants.ERROR_DATABASE_QUERY, "auth.registration.timeout");
         }
 
         private void processRegistration(Player player, String password) {
@@ -482,8 +464,8 @@ public class CommandHandler {
             CommandSource source = invocation.source();
             String[] args = invocation.arguments();
 
-            if (!(source instanceof Player player)) {
-                source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_PLAYER_ONLY)));
+            Player player = CommandHelper.validatePlayerSource(source, messages);
+            if (player == null) {
                 return;
             }
 
@@ -504,14 +486,8 @@ public class CommandHandler {
             }
 
             // Asynchroniczna zmiana hasła z Virtual Threads
-            // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
-            CompletableFuture.runAsync(() -> processPasswordChange(player, oldPassword, newPassword),
-                            VirtualThreadExecutorProvider.getVirtualExecutor())
-                    .exceptionally(throwable -> {
-                        logger.error("Błąd podczas asynchronicznej zmiany hasła gracza: {}", player.getUsername(), throwable);
-                        player.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
-                        return null;
-                    });
+            CommandHelper.runAsyncCommand(() -> processPasswordChange(player, oldPassword, newPassword),
+                    player.getUsername(), messages, source, StringConstants.ERROR_DATABASE_QUERY);
         }
 
         private void processPasswordChange(Player player, String oldPassword, String newPassword) {
@@ -627,28 +603,21 @@ public class CommandHandler {
             String[] args = invocation.arguments();
 
             // Sprawdzenie uprawnień administratora
-            if (!source.hasPermission("veloauth.admin")) {
-                source.sendMessage(ValidationUtils.createErrorComponent(messages.get("error.permission")));
+            if (!CommandHelper.checkAdminPermission(source, messages)) {
                 return;
             }
 
             // Walidacja argumentów - wymagany nickname
             if (args.length != 1) {
-                source.sendMessage(ValidationUtils.createErrorComponent(messages.get("admin.unregister.usage")));
+                CommandHelper.sendError(source, messages, "admin.unregister.usage");
                 return;
             }
 
             String nickname = args[0];
 
             // Asynchroniczne usuwanie konta z Virtual Threads
-            // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
-            CompletableFuture.runAsync(() -> processAdminUnregistration(source, nickname),
-                            VirtualThreadExecutorProvider.getVirtualExecutor())
-                    .exceptionally(throwable -> {
-                        logger.error("Błąd podczas asynchronicznego usuwania konta gracza: {}", nickname, throwable);
-                        source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
-                        return null;
-                    });
+            CommandHelper.runAsyncCommand(() -> processAdminUnregistration(source, nickname),
+                    nickname, messages, source, StringConstants.ERROR_DATABASE_QUERY);
         }
 
         private void processAdminUnregistration(CommandSource source, String nickname) {
@@ -662,7 +631,7 @@ public class CommandHandler {
                 if (dbResult.isDatabaseError()) {
                     logger.error(SECURITY_MARKER, "[DATABASE ERROR] Admin unregistration failed for {}: {}", 
                             nickname, dbResult.getErrorMessage());
-                    source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
+                    CommandHelper.sendError(source, messages, StringConstants.ERROR_DATABASE_QUERY);
                     return;
                 }
                 
@@ -685,7 +654,7 @@ public class CommandHandler {
                 if (deleteResult.isDatabaseError()) {
                     logger.error(SECURITY_MARKER, "[DATABASE ERROR] Admin unregistration delete failed for {}: {}", 
                             nickname, deleteResult.getErrorMessage());
-                    source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
+                    CommandHelper.sendError(source, messages, StringConstants.ERROR_DATABASE_QUERY);
                     return;
                 }
                 
@@ -705,18 +674,18 @@ public class CommandHandler {
                         logger.info("Rozłączono gracza {} - usunięcie konta przez admina", nickname);
                     });
 
-                    source.sendMessage(ValidationUtils.createSuccessComponent("Konto gracza " + nickname + " zostało usunięte!"));
+                    CommandHelper.sendSuccess(source, "Konto gracza " + nickname + " zostało usunięte!");
                     logger.info(AUTH_MARKER, "Administrator {} usunął konto gracza {}", 
                             source instanceof Player ? ((Player) source).getUsername() : "CONSOLE", nickname);
 
                 } else {
-                    source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
+                    CommandHelper.sendError(source, messages, StringConstants.ERROR_DATABASE_QUERY);
                     logger.error(DB_MARKER, "Nie udało się usunąć konta gracza {} przez admina", nickname);
                 }
 
             } catch (Exception e) {
                 logger.error(DB_MARKER, "Błąd podczas admin-usuwania konta gracza: {}", nickname, e);
-                source.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
+                CommandHelper.sendError(source, messages, StringConstants.ERROR_DATABASE_QUERY);
             }
         }
 
@@ -749,8 +718,7 @@ public class CommandHandler {
             CommandSource source = invocation.source();
             String[] args = invocation.arguments();
 
-            if (!source.hasPermission("veloauth.admin")) {
-                source.sendMessage(ValidationUtils.createErrorComponent(messages.get("error.permission")));
+            if (!CommandHelper.checkAdminPermission(source, messages)) {
                 return;
             }
 
@@ -788,24 +756,24 @@ public class CommandHandler {
                 }
                 case "stats" -> {
                     var stats = authCache.getStats();
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.header")));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.registered_accounts", stats.authorizedPlayersCount())));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, stats.bruteForceEntriesCount())));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, stats.premiumCacheCount())));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.database_status", String.format("%.1f%%", stats.getHitRate()))));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.registered_accounts", stats.getTotalRequests())));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.database_status", databaseManager.isConnected() ? messages.get("database.connected") : messages.get("database.disconnected"))));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, databaseManager.getCacheSize())));
+                    CommandHelper.sendWarning(source, messages.get("admin.stats.header"));
+                    CommandHelper.sendWarning(source, messages.get("admin.stats.registered_accounts", stats.authorizedPlayersCount()));
+                    CommandHelper.sendWarning(source, messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, stats.bruteForceEntriesCount()));
+                    CommandHelper.sendWarning(source, messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, stats.premiumCacheCount()));
+                    CommandHelper.sendWarning(source, messages.get("admin.stats.database_status", String.format("%.1f%%", stats.getHitRate())));
+                    CommandHelper.sendWarning(source, messages.get("admin.stats.registered_accounts", stats.getTotalRequests()));
+                    CommandHelper.sendWarning(source, messages.get("admin.stats.database_status", databaseManager.isConnected() ? messages.get("database.connected") : messages.get("database.disconnected")));
+                    CommandHelper.sendWarning(source, messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, databaseManager.getCacheSize()));
                 }
                 default -> sendAdminHelp(source);
             }
         }
 
         private void sendAdminHelp(CommandSource source) {
-            source.sendMessage(ValidationUtils.createWarningComponent("=== VeloAuth Admin ==="));
-            source.sendMessage(ValidationUtils.createWarningComponent("/vauth reload - Reload configuration"));
-            source.sendMessage(ValidationUtils.createWarningComponent("/vauth cache-reset [player] - Clear cache"));
-            source.sendMessage(ValidationUtils.createWarningComponent("/vauth stats - Show statistics"));
+            CommandHelper.sendWarning(source, "=== VeloAuth Admin ===");
+            CommandHelper.sendWarning(source, "/vauth reload - Reload configuration");
+            CommandHelper.sendWarning(source, "/vauth cache-reset [player] - Clear cache");
+            CommandHelper.sendWarning(source, "/vauth stats - Show statistics");
         }
 
         @Override
