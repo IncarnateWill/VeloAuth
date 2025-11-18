@@ -675,13 +675,9 @@ public class CommandHandler {
                 }
 
                 // Pobierz UUID z RegisteredPlayer do operacji cache
-                UUID playerUuid;
-                try {
-                    playerUuid = UUID.fromString(registeredPlayer.getUuid());
-                } catch (IllegalArgumentException e) {
-                    logger.warn("Nieprawidłowy UUID dla gracza {}: {}", nickname, registeredPlayer.getUuid());
-                    source.sendMessage(ValidationUtils.createErrorComponent("Błąd: nieprawidłowy UUID gracza!"));
-                    return;
+                UUID playerUuid = parsePlayerUuid(registeredPlayer, nickname, source);
+                if (playerUuid == null) {
+                    return; // Error already handled in parsePlayerUuid
                 }
 
                 // Usuń z bazy danych (bez weryfikacji hasła - admin ma pełne uprawnienia)
@@ -778,12 +774,12 @@ public class CommandHandler {
                     var stats = authCache.getStats();
                     source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.header")));
                     source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.registered_accounts", stats.authorizedPlayersCount())));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.cache_size", stats.bruteForceEntriesCount())));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.cache_size", stats.premiumCacheCount())));
+                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, stats.bruteForceEntriesCount())));
+                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, stats.premiumCacheCount())));
                     source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.database_status", String.format("%.1f%%", stats.getHitRate()))));
                     source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.registered_accounts", stats.getTotalRequests())));
                     source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.database_status", databaseManager.isConnected() ? messages.get("database.connected") : messages.get("database.disconnected"))));
-                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get("admin.stats.cache_size", databaseManager.getCacheSize())));
+                    source.sendMessage(ValidationUtils.createWarningComponent(messages.get(StringConstants.ADMIN_STATS_CACHE_SIZE, databaseManager.getCacheSize())));
                 }
                 default -> sendAdminHelp(source);
             }
@@ -805,6 +801,24 @@ public class CommandHandler {
             }
 
             return List.of();
+        }
+    }
+
+    /**
+     * Parses player UUID from RegisteredPlayer with error handling.
+     *
+     * @param registeredPlayer The registered player containing UUID string
+     * @param nickname Player nickname for error reporting
+     * @param source Command source for error messages
+     * @return UUID if valid, null if invalid (error already reported)
+     */
+    private UUID parsePlayerUuid(RegisteredPlayer registeredPlayer, String nickname, CommandSource source) {
+        try {
+            return UUID.fromString(registeredPlayer.getUuid());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Nieprawidłowy UUID dla gracza {}: {}", nickname, registeredPlayer.getUuid());
+            source.sendMessage(ValidationUtils.createErrorComponent("Błąd: nieprawidłowy UUID gracza!"));
+            return null;
         }
     }
 

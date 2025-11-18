@@ -80,7 +80,7 @@ public final class SecurityHelper {
      */
     public static boolean checkBruteForceBlock(
             AuthCache authCache, InetAddress playerAddress,
-            Logger logger, Marker securityMarker, String playerName, String operationType) {
+            Logger logger, Marker securityMarker, String operationType) {
 
         if (playerAddress != null && authCache.isBlocked(playerAddress)) {
             String logMessage = String.format("[BRUTE_FORCE_BLOCK] IP %s próbował %s",
@@ -185,7 +185,7 @@ public final class SecurityHelper {
 
         // Check brute force protection
         if (checkBruteForceBlock(context.authCache(), context.playerAddress(), context.logger(), 
-                context.securityMarker(), context.playerName(), context.operationType())) {
+                context.securityMarker(), context.operationType())) {
             return new SecurityCheckResult(false, "brute_force_blocked", "Zablokowany za brute force");
         }
 

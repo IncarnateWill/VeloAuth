@@ -297,11 +297,9 @@ public class AuthCache {
     public void removeAuthorizedPlayer(UUID uuid) {
         if (uuid != null) {
             CachedAuthUser removed = authorizedPlayers.remove(uuid);
-            if (removed != null) {
-                if (logger.isDebugEnabled()) {
+            if (removed != null && logger.isDebugEnabled()) {
                 logger.debug(messages.get("cache.debug.player.removed"),
                         removed.getNickname(), uuid);
-            }
             }
         }
     }
@@ -334,11 +332,9 @@ public class AuthCache {
         }
 
         PremiumCacheEntry removed = premiumCache.remove(nickname.toLowerCase());
-        if (removed != null) {
-            if (logger.isDebugEnabled()) {
+        if (removed != null && logger.isDebugEnabled()) {
             logger.debug(messages.get("cache.debug.premium.removed"),
                     nickname, removed.isPremium());
-        }
         }
     }
 
@@ -465,10 +461,8 @@ public class AuthCache {
     public void resetLoginAttempts(InetAddress address) {
         if (address != null) {
             BruteForceEntry removed = bruteForceAttempts.remove(address);
-            if (removed != null) {
-                if (logger.isDebugEnabled()) {
+            if (removed != null && logger.isDebugEnabled()) {
                 logger.debug(messages.get("cache.debug.reset.attempts"), address.getHostAddress());
-            }
             }
         }
     }
@@ -561,10 +555,8 @@ public class AuthCache {
         }
 
         ActiveSession removed = activeSessions.remove(uuid);
-        if (removed != null) {
-            if (logger.isDebugEnabled()) {
+        if (removed != null && logger.isDebugEnabled()) {
             logger.debug(messages.get("cache.debug.session.ended"), removed.getNickname(), uuid);
-        }
         }
     }
 

@@ -404,7 +404,7 @@ public class AuthListener {
 
             if (!isAuthorized || !hasActiveSession || !uuidMatches) {
                 // ❌ NIE AUTORYZOWANY LUB BRAK SESJI LUB UUID MISMATCH
-                String reason = resolveBlockReason(isAuthorized, hasActiveSession, uuidMatches);
+                String reason = resolveBlockReason(isAuthorized, hasActiveSession);
 
                 logger.warn(SECURITY_MARKER, messages.get("player.blocked.unauthorized"),
                         player.getUsername(), targetServerName, reason, playerIp);
@@ -628,10 +628,9 @@ public class AuthListener {
      *
      * @param isAuthorized Whether player is authorized
      * @param hasActiveSession Whether player has active session
-     * @param uuidMatches Whether UUID matches
      * @return Human-readable reason string
      */
-    private static String resolveBlockReason(boolean isAuthorized, boolean hasActiveSession, boolean uuidMatches) {
+    private static String resolveBlockReason(boolean isAuthorized, boolean hasActiveSession) {
         if (!isAuthorized) {
             return "nieautoryzowany";
         }

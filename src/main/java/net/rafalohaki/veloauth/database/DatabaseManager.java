@@ -8,6 +8,7 @@ import com.j256.ormlite.misc.TransactionManager;
 import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.support.DatabaseConnection;
 import com.j256.ormlite.table.TableUtils;
+import net.rafalohaki.veloauth.constants.StringConstants;
 import net.rafalohaki.veloauth.i18n.Messages;
 import net.rafalohaki.veloauth.model.PremiumUuid;
 import net.rafalohaki.veloauth.model.RegisteredPlayer;
@@ -205,9 +206,12 @@ public class DatabaseManager {
             } catch (SQLException e) {
                 logger.error(DB_MARKER, "Błąd SQL podczas transakcji", e);
                 throw new RuntimeException("SQL transaction failed", e);
-            } catch (Exception e) {
-                logger.error(DB_MARKER, "Błąd w transakcji DB", e);
-                throw new RuntimeException("Transaction failed", e);
+            } catch (IllegalStateException e) {
+                logger.error(DB_MARKER, "Błąd stanu w transakcji DB", e);
+                throw new RuntimeException("Transaction state failed", e);
+            } catch (RuntimeException e) {
+                logger.error(DB_MARKER, "Błąd wykonania w transakcji DB", e);
+                throw new RuntimeException("Transaction execution failed", e);
             }
         }, dbExecutor);
     }
@@ -433,7 +437,7 @@ public class DatabaseManager {
             } catch (SQLException e) {
                 logger.error(DB_MARKER, "Błąd podczas wyszukiwania gracza: {}", lowercaseNickname, e);
                 // CRITICAL: Return database error instead of null to prevent bypass
-                return DbResult.databaseError(messages.get("database.error") + ": " + e.getMessage());
+                return DbResult.databaseError(messages.get(StringConstants.DATABASE_ERROR) + ": " + e.getMessage());
             }
         }, dbExecutor);
     }
@@ -461,7 +465,7 @@ public class DatabaseManager {
                 return DbResult.success(success);
             } catch (SQLException e) {
                 logger.error(DB_MARKER, "Błąd podczas zapisywania gracza: {}", player.getNickname(), e);
-                return DbResult.databaseError(messages.get("database.error") + ": " + e.getMessage());
+                return DbResult.databaseError(messages.get(StringConstants.DATABASE_ERROR) + ": " + e.getMessage());
             }
         }, dbExecutor);
     }
@@ -493,7 +497,7 @@ public class DatabaseManager {
                 return DbResult.success(false);
             } catch (SQLException e) {
                 logger.error(DB_MARKER, "Błąd podczas usuwania gracza: {}", lowercaseNickname, e);
-                return DbResult.databaseError(messages.get("database.error") + ": " + e.getMessage());
+                return DbResult.databaseError(messages.get(StringConstants.DATABASE_ERROR) + ": " + e.getMessage());
             }
         }, dbExecutor);
     }
@@ -517,9 +521,9 @@ public class DatabaseManager {
                 boolean premium = premiumUuidDao.findByNickname(username).isPresent();
                 logger.debug(DB_MARKER, "Premium status z PREMIUM_UUIDS dla {}: {}", username, premium);
                 return DbResult.success(premium);
-            } catch (Exception e) {
-                logger.error(DB_MARKER, "Błąd podczas sprawdzania premium status dla gracza: {}", username, e);
-                return DbResult.databaseError(messages.get("database.error") + ": " + e.getMessage());
+            } catch (RuntimeException e) {
+                logger.error(DB_MARKER, "Błąd wykonania podczas sprawdzania premium status dla gracza: {}", username, e);
+                return DbResult.databaseError(messages.get(StringConstants.DATABASE_ERROR) + ": " + e.getMessage());
             }
         }, dbExecutor);
     }

@@ -2,6 +2,7 @@ package net.rafalohaki.veloauth.util;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import net.rafalohaki.veloauth.config.Settings;
+import net.rafalohaki.veloauth.constants.StringConstants;
 import net.rafalohaki.veloauth.database.DatabaseManager;
 import net.rafalohaki.veloauth.i18n.Messages;
 import net.rafalohaki.veloauth.model.RegisteredPlayer;
@@ -41,6 +42,18 @@ public final class AuthenticationHelper {
             String oldPassword,
             String newPassword,
             Settings settings,
+            Logger logger,
+            Marker dbMarker,
+            Messages messages
+    ) {}
+
+    /**
+     * Account deletion context containing parameters for account deletion operations.
+     */
+    public record AccountDeletionContext(
+            DatabaseManager databaseManager,
+            String username,
+            String password,
             Logger logger,
             Marker dbMarker,
             Messages messages
@@ -178,7 +191,7 @@ public final class AuthenticationHelper {
                 RegisteredPlayer registeredPlayer = playerResult.getValue();
                 if (registeredPlayer == null) {
                     if (logger.isDebugEnabled()) {
-                    logger.debug(dbMarker, messages.get("player.not_found"), username);
+                    logger.debug(dbMarker, messages.get(StringConstants.PLAYER_NOT_FOUND), username);
                 }
                     return null;
                 }
@@ -224,7 +237,7 @@ public final class AuthenticationHelper {
                 
                 RegisteredPlayer registeredPlayer = playerResult.getValue();
                 if (registeredPlayer == null) {
-                    context.logger().debug(context.dbMarker(), context.messages().get("player.not_found"), context.username());
+                    context.logger().debug(context.dbMarker(), context.messages().get(StringConstants.PLAYER_NOT_FOUND), context.username());
                     return false;
                 }
 
@@ -265,71 +278,92 @@ public final class AuthenticationHelper {
     }
 
     /**
+     * Validates player for deletion - checks existence and password verification.
+     *
+     * @param context Account deletion context
+     * @return RegisteredPlayer if valid, null if invalid
+     */
+    private static RegisteredPlayer validatePlayerForDeletion(AccountDeletionContext context) {
+        // Find player in database
+        String lowercaseNick = context.username().toLowerCase();
+        var playerResult = context.databaseManager().findPlayerByNickname(lowercaseNick).join();
+        
+        // CRITICAL: Fail-secure on database errors
+        if (playerResult.isDatabaseError()) {
+            context.logger().error(context.dbMarker(), "Database error during account deletion lookup for {}: {}", 
+                    context.username(), playerResult.getErrorMessage());
+            return null;
+        }
+        
+        RegisteredPlayer registeredPlayer = playerResult.getValue();
+        if (registeredPlayer == null) {
+            if (context.logger().isDebugEnabled()) {
+                context.logger().debug(context.dbMarker(), context.messages().get(StringConstants.PLAYER_NOT_FOUND), context.username());
+            }
+            return null;
+        }
+
+        // Verify password
+        if (!verifyPassword(context.password(), registeredPlayer.getHash())) {
+            if (context.logger().isDebugEnabled()) {
+                context.logger().debug(context.dbMarker(), context.messages().get("player.password.invalid.deletion"), context.username());
+            }
+            return null;
+        }
+
+        return registeredPlayer;
+    }
+
+    /**
+     * Executes the actual deletion operation.
+     *
+     * @param context Account deletion context
+     * @param lowercaseNick Lowercase nickname for database operation
+     * @return true if deletion successful, false otherwise
+     */
+    private static boolean executeDeletion(AccountDeletionContext context, String lowercaseNick) {
+        // Delete player
+        var deleteResult = context.databaseManager().deletePlayer(lowercaseNick).join();
+        
+        // CRITICAL: Fail-secure on database errors
+        if (deleteResult.isDatabaseError()) {
+            context.logger().error(context.dbMarker(), "Database error during account deletion for {}: {}", 
+                    context.username(), deleteResult.getErrorMessage());
+            return false;
+        }
+        
+        boolean deleted = deleteResult.getValue();
+        if (deleted) {
+            context.logger().info(context.dbMarker(), context.messages().get("player.account.deleted.success"), context.username());
+            return true;
+        } else {
+            context.logger().error(context.dbMarker(), context.messages().get("player.account.delete.failed"), context.username());
+            return false;
+        }
+    }
+
+    /**
      * Performs account deletion with verification.
      *
-     * @param databaseManager Database manager for operations
-     * @param username        Player's username
-     * @param password        Password for verification
-     * @param logger          Logger for events
-     * @param dbMarker        Database logging marker
+     * @param context Account deletion context
      * @return CompletableFuture containing true if successful, false otherwise
      */
-    public static CompletableFuture<Boolean> performAccountDeletion(
-            DatabaseManager databaseManager, String username, String password,
-            Logger logger, Marker dbMarker, Messages messages) {
+    public static CompletableFuture<Boolean> performAccountDeletion(AccountDeletionContext context) {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Find player in database
-                String lowercaseNick = username.toLowerCase();
-                var playerResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-                
-                // CRITICAL: Fail-secure on database errors
-                if (playerResult.isDatabaseError()) {
-                    logger.error(dbMarker, "Database error during account deletion lookup for {}: {}", 
-                            username, playerResult.getErrorMessage());
-                    return false;
-                }
-                
-                RegisteredPlayer registeredPlayer = playerResult.getValue();
-
+                // Validate player exists and password is correct
+                RegisteredPlayer registeredPlayer = validatePlayerForDeletion(context);
                 if (registeredPlayer == null) {
-                    if (logger.isDebugEnabled()) {
-                    logger.debug(dbMarker, messages.get("player.not_found"), username);
-                }
                     return false;
                 }
 
-                // Verify password
-                if (!verifyPassword(password, registeredPlayer.getHash())) {
-                    if (logger.isDebugEnabled()) {
-                    logger.debug(dbMarker, messages.get("player.password.invalid.deletion"), username);
-                }
-                    return false;
-                }
-
-                // Delete player
-                var deleteResult = databaseManager.deletePlayer(lowercaseNick).join();
-                
-                // CRITICAL: Fail-secure on database errors
-                if (deleteResult.isDatabaseError()) {
-                    logger.error(dbMarker, "Database error during account deletion for {}: {}", 
-                            username, deleteResult.getErrorMessage());
-                    return false;
-                }
-                
-                boolean deleted = deleteResult.getValue();
-
-                if (deleted) {
-                    logger.info(dbMarker, messages.get("player.account.deleted.success"), username);
-                    return true;
-                } else {
-                    logger.error(dbMarker, messages.get("player.account.delete.failed"), username);
-                    return false;
-                }
+                // Execute the deletion
+                String lowercaseNick = context.username().toLowerCase();
+                return executeDeletion(context, lowercaseNick);
 
             } catch (Exception e) {
-                logger.error(dbMarker, messages.get("player.account.deletion.error"), username, e);
+                context.logger().error(context.dbMarker(), context.messages().get("player.account.deletion.error"), context.username(), e);
                 return false;
             }
         });
