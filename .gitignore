@@ -120,3 +120,4 @@ sonarqube_mcp_instructions.mdc
 .windsurfrules
 .windsurf/workflows/*
 connectedMode.json
+refactor/*
