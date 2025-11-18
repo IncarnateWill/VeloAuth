@@ -119,3 +119,4 @@ sonarqube_mcp_instructions.mdc
 #Ignore windsurf AI rules
 .windsurfrules
 .windsurf/workflows/*
+connectedMode.json
