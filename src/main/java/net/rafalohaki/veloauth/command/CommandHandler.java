@@ -451,7 +451,7 @@ public class CommandHandler {
 
             // Asynchroniczna zmiana hasła z Virtual Threads
             CommandHelper.runAsyncCommand(() -> processPasswordChange(player, oldPassword, newPassword),
-                    messages, source, "error.database.query");
+                    messages, source, ERROR_DATABASE_QUERY);
         }
 
         private void processPasswordChange(Player player, String oldPassword, String newPassword) {

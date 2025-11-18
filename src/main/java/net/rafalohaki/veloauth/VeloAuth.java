@@ -159,103 +159,132 @@ public class VeloAuth {
     @SuppressWarnings("java:S2139") // SonarCloud false positive: we log AND rethrow with cause
     private void initializePlugin() {
         try {
-            // 1. Ładowanie konfiguracji
-            logger.info("Loading configuration...");
-            settings = new Settings(dataDirectory);
-            if (!settings.load()) {
-                throw VeloAuthException.configuration("settings loading", null);
-            }
-
-            // 2. Inicjalizacja systemu wiadomości (i18n)
-            if (logger.isInfoEnabled()) {
-                logger.info("Initializing message system...");
-            }
-            messages = new Messages();
-            messages.setLanguage(settings.getLanguage());
-
-            // Now we can use localized messages
-            if (logger.isInfoEnabled()) {
-                logger.info(messages.get("plugin.initialization.loading_config"));
-                logger.info(messages.get("plugin.initialization.init_messages"));
-            }
-
-            // 3. Inicjalizacja bazy danych
-            if (logger.isInfoEnabled()) {
-                logger.info(messages.get("plugin.initialization.init_database"));
-            }
-            DatabaseConfig dbConfig = createDatabaseConfig();
-            databaseManager = new DatabaseManager(dbConfig, messages);
-
-            boolean dbInitialized = databaseManager.initialize().join();
-            if (!dbInitialized) {
-                throw VeloAuthException.database("initialization", null);
-            }
-
-            // 4. Inicjalizacja cache
-            if (logger.isInfoEnabled()) {
-                logger.info(messages.get("plugin.initialization.init_cache"));
-            }
-            authCache = new AuthCache(
-                    settings.getCacheTtlMinutes(),
-                    settings.getCacheMaxSize(),
-                    settings.getCacheMaxSize(), // maxSessions - użyj tej samej wartości co maxSize
-                    settings.getCacheMaxSize(), // maxPremiumCache - użyj tej samej wartości co maxSize
-                    settings.getBruteForceMaxAttempts(),
-                    settings.getBruteForceTimeoutMinutes(),
-                    settings.getCacheCleanupIntervalMinutes(),
-                    settings,
-                    messages
-            );
-
-            // 5. Inicjalizacja command handler
-            if (logger.isInfoEnabled()) {
-                logger.info(messages.get("plugin.initialization.registering_commands"));
-            }
-            commandHandler = new CommandHandler(this, databaseManager, authCache, settings, messages);
-            commandHandler.registerCommands();
-
-            // 6. Inicjalizacja connection manager
-            if (logger.isInfoEnabled()) {
-                logger.info(messages.get("plugin.initialization.init_connection_manager"));
-            }
-            connectionManager = new ConnectionManager(this, databaseManager, authCache, settings, messages);
-
-            // 7. Premium resolver service
-            if (logger.isInfoEnabled()) {
-                logger.info(messages.get("plugin.initialization.init_premium_resolver"));
-            }
-            premiumResolverService = new PremiumResolverService(logger, settings, databaseManager.getPremiumUuidDao());
-
-            // 8. Rejestracja pełnego AuthListener z wszystkimi zależnościami
-            if (logger.isInfoEnabled()) {
-                logger.info(messages.get("plugin.initialization.registering_listeners"));
-            }
-            authListener = new AuthListener(this, connectionManager, authCache, settings, premiumResolverService, databaseManager, messages);
-            server.getEventManager().register(this, authListener);
-            if (logger.isInfoEnabled()) {
-                logger.info("✅ Full AuthListener registered after initialization");
-            }
-
-            // 9. Debug serwerów (zgodnie z notes.txt)
-            connectionManager.debugServers();
-
+            initializeConfiguration();
+            initializeMessages();
+            initializeDatabase();
+            initializeCache();
+            initializeCommands();
+            initializeConnectionManager();
+            initializePremiumResolver();
+            initializeListeners();
+            debugServers();
+            
             if (logger.isInfoEnabled()) {
                 logger.info(messages.get("plugin.initialization.components_ready"));
             }
 
         } catch (IllegalStateException e) {
-            logger.error("Critical state error during VeloAuth initialization", e);
+            if (logger.isErrorEnabled()) {
+                logger.error("Critical state error during VeloAuth initialization", e);
+            }
             throw VeloAuthException.configuration("plugin initialization", e);
         } catch (IllegalArgumentException e) {
-            logger.error("Critical argument error during VeloAuth initialization", e);
+            if (logger.isErrorEnabled()) {
+                logger.error("Critical argument error during VeloAuth initialization", e);
+            }
             throw VeloAuthException.configuration("invalid arguments", e);
         } catch (VeloAuthException e) {
-            logger.error("VeloAuth error during initialization", e);
+            if (logger.isErrorEnabled()) {
+                logger.error("VeloAuth error during initialization", e);
+            }
             throw e; // Re-throw our custom exceptions
         } catch (Exception e) {
-            logger.error("Unexpected error during VeloAuth initialization", e);
+            if (logger.isErrorEnabled()) {
+                logger.error("Unexpected error during VeloAuth initialization", e);
+            }
             throw VeloAuthException.configuration("unexpected error", e);
         }
+    }
+
+    private void initializeConfiguration() {
+        if (logger.isInfoEnabled()) {
+            logger.info("Loading configuration...");
+        }
+        settings = new Settings(dataDirectory);
+        if (!settings.load()) {
+            throw VeloAuthException.configuration("settings loading", null);
+        }
+    }
+
+    private void initializeMessages() {
+        if (logger.isInfoEnabled()) {
+            logger.info("Initializing message system...");
+        }
+        messages = new Messages();
+        messages.setLanguage(settings.getLanguage());
+
+        // Now we can use localized messages
+        if (logger.isInfoEnabled()) {
+            logger.info(messages.get("plugin.initialization.loading_config"));
+            logger.info(messages.get("plugin.initialization.init_messages"));
+        }
+    }
+
+    private void initializeDatabase() {
+        if (logger.isInfoEnabled()) {
+            logger.info(messages.get("plugin.initialization.init_database"));
+        }
+        DatabaseConfig dbConfig = createDatabaseConfig();
+        databaseManager = new DatabaseManager(dbConfig, messages);
+
+        boolean dbInitialized = databaseManager.initialize().join();
+        if (!dbInitialized) {
+            throw VeloAuthException.database("initialization", null);
+        }
+    }
+
+    private void initializeCache() {
+        if (logger.isInfoEnabled()) {
+            logger.info(messages.get("plugin.initialization.init_cache"));
+        }
+        authCache = new AuthCache(
+                settings.getCacheTtlMinutes(),
+                settings.getCacheMaxSize(),
+                settings.getCacheMaxSize(), // maxSessions - użyj tej samej wartości co maxSize
+                settings.getCacheMaxSize(), // maxPremiumCache - użyj tej samej wartości co maxSize
+                settings.getBruteForceMaxAttempts(),
+                settings.getBruteForceTimeoutMinutes(),
+                settings.getCacheCleanupIntervalMinutes(),
+                settings,
+                messages
+        );
+    }
+
+    private void initializeCommands() {
+        if (logger.isInfoEnabled()) {
+            logger.info(messages.get("plugin.initialization.registering_commands"));
+        }
+        commandHandler = new CommandHandler(this, databaseManager, authCache, settings, messages);
+        commandHandler.registerCommands();
+    }
+
+    private void initializeConnectionManager() {
+        if (logger.isInfoEnabled()) {
+            logger.info(messages.get("plugin.initialization.init_connection_manager"));
+        }
+        connectionManager = new ConnectionManager(this, databaseManager, authCache, settings, messages);
+    }
+
+    private void initializePremiumResolver() {
+        if (logger.isInfoEnabled()) {
+            logger.info(messages.get("plugin.initialization.init_premium_resolver"));
+        }
+        premiumResolverService = new PremiumResolverService(logger, settings, databaseManager.getPremiumUuidDao());
+    }
+
+    private void initializeListeners() {
+        if (logger.isInfoEnabled()) {
+            logger.info(messages.get("plugin.initialization.registering_listeners"));
+        }
+        authListener = new AuthListener(this, connectionManager, authCache, settings, premiumResolverService, databaseManager, messages);
+        server.getEventManager().register(this, authListener);
+        if (logger.isInfoEnabled()) {
+            logger.info("✅ Full AuthListener registered after initialization");
+        }
+    }
+
+    private void debugServers() {
+        connectionManager.debugServers();
     }
 
     /**

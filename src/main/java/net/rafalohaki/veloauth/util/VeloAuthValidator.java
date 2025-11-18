@@ -196,6 +196,9 @@ public final class VeloAuthValidator {
                     return Component.text("Hasło jest zbyt popularne. Wybierz silniejsze hasło.", NamedTextColor.RED);
                 }
                 break;
+            default:
+                // Default case for unknown input types - return generic validation error
+                break;
         }
         
         return Component.text("Błąd walidacji: " + message, NamedTextColor.RED);

@@ -33,6 +33,10 @@ public class DatabaseManager {
 
     // Stałe dla wiadomości bazy danych
     private static final String DATABASE_ERROR = "database.error";
+    
+    // Stałe dla zapytań SQL
+    private static final String ALTER_TABLE = "ALTER TABLE ";
+    private static final String ADD_COLUMN = " ADD COLUMN ";
 
     // Markery SLF4J dla kategoryzowanego logowania
     private static final Marker DB_MARKER = MarkerFactory.getMarker("DATABASE");
@@ -134,57 +138,14 @@ public class DatabaseManager {
             try {
                 databaseLock.lock();
                 try {
-
-                    if (connected) {
-                        if (logger.isWarnEnabled()) {
-                            logger.warn(DB_MARKER, "Baza danych już jest połączona");
-                        }
+                    if (isAlreadyConnected()) {
                         return true;
                     }
 
-                    // Sprawdź czy używać HikariCP
-                    if (config.hasDataSource()) {
-                        // Użyj HikariCP DataSource z DatabaseConfig
-                        if (logger.isInfoEnabled()) {
-                            logger.info(DB_MARKER, messages.get("database.manager.hikari_init"));
-                        }
-                        connectionSource = new DataSourceConnectionSource(config.getDataSource(), config.getJdbcUrl());
-
-                        if (logger.isInfoEnabled()) {
-                            logger.info(DB_MARKER, messages.get("database.manager.hikari_ready"), config.getStorageType());
-                        }
-                    } else {
-                        // Fallback dla H2/SQLite lub gdy HikariCP nie jest skonfigurowany
-                        String jdbcUrl = config.getJdbcUrl();
-                        if (logger.isInfoEnabled()) {
-                            logger.info(DB_MARKER, "Connecting to database (standard JDBC): {}", jdbcUrl);
-                        }
-
-                        connectionSource = new JdbcConnectionSource(
-                                jdbcUrl,
-                                config.getUser(),
-                                config.getPassword()
-                        );
-
-                        if (logger.isInfoEnabled()) {
-                            logger.info(DB_MARKER, messages.get("database.manager.standard_jdbc"), config.getStorageType());
-                        }
-                    }
-
-                    // Tworzenie DAO
-                    playerDao = DaoManager.createDao(connectionSource, RegisteredPlayer.class);
-                    premiumUuidDao = new PremiumUuidDao(connectionSource);
-                    jdbcAuthDao = new JdbcAuthDao(config);
-
-                    // Tworzenie tabel jeśli nie istnieją
+                    initializeConnection();
+                    initializeDaos();
                     createTablesIfNotExists();
-
-                    connected = true;
-                    if (logger.isInfoEnabled()) {
-                        logger.info(DB_MARKER, messages.get("database.manager.connected"), config.getStorageType());
-                    }
-
-                    // Uruchom health checks co 30 sekund
+                    markAsConnected();
                     startHealthChecks();
 
                     return true;
@@ -202,6 +163,65 @@ public class DatabaseManager {
         }, dbExecutor);
     }
 
+    private boolean isAlreadyConnected() {
+        if (connected) {
+            if (logger.isWarnEnabled()) {
+                logger.warn(DB_MARKER, "Baza danych już jest połączona");
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void initializeConnection() throws SQLException {
+        if (config.hasDataSource()) {
+            initializeHikariConnection();
+        } else {
+            initializeStandardJdbcConnection();
+        }
+    }
+
+    private void initializeHikariConnection() throws SQLException {
+        if (logger.isInfoEnabled()) {
+            logger.info(DB_MARKER, messages.get("database.manager.hikari_init"));
+        }
+        connectionSource = new DataSourceConnectionSource(config.getDataSource(), config.getJdbcUrl());
+
+        if (logger.isInfoEnabled()) {
+            logger.info(DB_MARKER, messages.get("database.manager.hikari_ready"), config.getStorageType());
+        }
+    }
+
+    private void initializeStandardJdbcConnection() throws SQLException {
+        String jdbcUrl = config.getJdbcUrl();
+        if (logger.isInfoEnabled()) {
+            logger.info(DB_MARKER, "Connecting to database (standard JDBC): {}", jdbcUrl);
+        }
+
+        connectionSource = new JdbcConnectionSource(
+                jdbcUrl,
+                config.getUser(),
+                config.getPassword()
+        );
+
+        if (logger.isInfoEnabled()) {
+            logger.info(DB_MARKER, messages.get("database.manager.standard_jdbc"), config.getStorageType());
+        }
+    }
+
+    private void initializeDaos() throws SQLException {
+        playerDao = DaoManager.createDao(connectionSource, RegisteredPlayer.class);
+        premiumUuidDao = new PremiumUuidDao(connectionSource);
+        jdbcAuthDao = new JdbcAuthDao(config);
+    }
+
+    private void markAsConnected() {
+        connected = true;
+        if (logger.isInfoEnabled()) {
+            logger.info(DB_MARKER, messages.get("database.manager.connected"), config.getStorageType());
+        }
+    }
+
     /**
      * Wykonuje operację w transakcji DB dla atomowości.
      * Używa Virtual Threads dla wydajności I/O i ORMLite TransactionManager.
@@ -212,32 +232,37 @@ public class DatabaseManager {
      */
     public <T> CompletableFuture<T> executeInTransaction(Callable<T> operation) {
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                if (connectionSource == null) {
-                    throw new RuntimeException(DATABASE_NOT_CONNECTED);
-                }
-
-                // Użyj ORMLite TransactionManager dla prawdziwych transakcji
-                TransactionManager transactionManager = new TransactionManager(connectionSource);
-                return transactionManager.callInTransaction(operation);
-
-            } catch (SQLException e) {
-                if (logger.isErrorEnabled()) {
-                    logger.error(DB_MARKER, "Błąd SQL podczas transakcji", e);
-                }
-                throw new RuntimeException("SQL transaction failed", e);
-            } catch (IllegalStateException e) {
-                if (logger.isErrorEnabled()) {
-                    logger.error(DB_MARKER, "Błąd stanu w transakcji DB", e);
-                }
-                throw new RuntimeException("Transaction state failed", e);
-            } catch (RuntimeException e) {
-                if (logger.isErrorEnabled()) {
-                    logger.error(DB_MARKER, "Błąd wykonania w transakcji DB", e);
-                }
-                throw new RuntimeException("Transaction execution failed", e);
-            }
+            validateConnectionSource();
+            return executeTransaction(operation);
         }, dbExecutor);
+    }
+
+    private void validateConnectionSource() {
+        if (connectionSource == null) {
+            throw new RuntimeException(DATABASE_NOT_CONNECTED);
+        }
+    }
+
+    private <T> T executeTransaction(Callable<T> operation) {
+        try {
+            TransactionManager transactionManager = new TransactionManager(connectionSource);
+            return transactionManager.callInTransaction(operation);
+        } catch (SQLException e) {
+            if (logger.isErrorEnabled()) {
+                logger.error(DB_MARKER, "Błąd SQL podczas transakcji", e);
+            }
+            throw new RuntimeException("SQL transaction failed", e);
+        } catch (IllegalStateException e) {
+            if (logger.isErrorEnabled()) {
+                logger.error(DB_MARKER, "Błąd stanu w transakcji DB", e);
+            }
+            throw new RuntimeException("Transaction state failed", e);
+        } catch (RuntimeException e) {
+            if (logger.isErrorEnabled()) {
+                logger.error(DB_MARKER, "Błąd wykonania w transakcji DB", e);
+            }
+            throw new RuntimeException("Transaction execution failed", e);
+        }
     }
 
     /**
@@ -376,63 +401,94 @@ public class DatabaseManager {
             return CompletableFuture.completedFuture(DbResult.success(null));
         }
 
-        // ALWAYS normalize to lowercase for consistent cache keys
         String normalizedNickname = nickname.toLowerCase();
         
         return CompletableFuture.supplyAsync(() -> {
-            RegisteredPlayer cached = playerCache.get(normalizedNickname);
-            if (cached != null) {
-                // Additional validation: ensure the cached player matches the requested nickname
-                if (!cached.getLowercaseNickname().equals(normalizedNickname)) {
-                    // Cache corruption detected - remove invalid entry
-                    playerCache.remove(normalizedNickname);
-                    if (logger.isWarnEnabled()) {
-                        logger.warn(CACHE_MARKER, "Cache corruption detected for {} - removing invalid entry", normalizedNickname);
-                    }
-                } else {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(CACHE_MARKER, "Cache HIT dla gracza: {}", normalizedNickname);
-                    }
-                    return DbResult.success(cached);
-                }
+            DbResult<RegisteredPlayer> cacheResult = checkCache(normalizedNickname);
+            if (cacheResult != null) {
+                return cacheResult;
             }
 
-            if (!connected || !isHealthy()) {
-                if (logger.isWarnEnabled()) {
-                    logger.warn(DB_MARKER, DATABASE_NOT_CONNECTED);
-                }
-                return DbResult.databaseError(DATABASE_NOT_CONNECTED);
+            DbResult<Void> connectionResult = validateDatabaseConnection();
+            if (connectionResult.isDatabaseError()) {
+                return DbResult.databaseError(connectionResult.getErrorMessage());
             }
 
-            try {
-                RegisteredPlayer player = jdbcAuthDao.findPlayerByLowercaseNickname(normalizedNickname);
-                if (player != null) {
-                    // Double-check: only cache if the keys match
-                    if (player.getLowercaseNickname().equals(normalizedNickname)) {
-                        playerCache.put(normalizedNickname, player);
-                        if (logger.isDebugEnabled()) {
-                            logger.debug(CACHE_MARKER, "Cache MISS -> DB HIT dla gracza: {}", normalizedNickname);
-                        }
-                    } else {
-                        if (logger.isWarnEnabled()) {
-                            logger.warn(CACHE_MARKER, "Database inconsistency for {} - expected {}, found {}", 
-                                    normalizedNickname, normalizedNickname, player.getLowercaseNickname());
-                        }
-                    }
-                } else {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(DB_MARKER, "Gracz nie znaleziony: {}", normalizedNickname);
-                    }
-                }
-                return DbResult.success(player);
-            } catch (SQLException e) {
-                if (logger.isErrorEnabled()) {
-                    logger.error(DB_MARKER, "Błąd podczas wyszukiwania gracza: {}", normalizedNickname, e);
-                }
-                // CRITICAL: Return database error instead of null to prevent bypass
-                return DbResult.databaseError(messages.get(DATABASE_ERROR) + ": " + e.getMessage());
-            }
+            return queryPlayerFromDatabase(normalizedNickname);
         }, dbExecutor);
+    }
+
+    private DbResult<RegisteredPlayer> checkCache(String normalizedNickname) {
+        RegisteredPlayer cached = playerCache.get(normalizedNickname);
+        if (cached == null) {
+            return null; // Cache miss
+        }
+
+        if (isCacheCorrupted(cached, normalizedNickname)) {
+            handleCacheCorruption(normalizedNickname);
+            return null; // Treat as cache miss
+        }
+
+        logCacheHit(normalizedNickname);
+        return DbResult.success(cached);
+    }
+
+    private boolean isCacheCorrupted(RegisteredPlayer cached, String normalizedNickname) {
+        return !cached.getLowercaseNickname().equals(normalizedNickname);
+    }
+
+    private void handleCacheCorruption(String normalizedNickname) {
+        playerCache.remove(normalizedNickname);
+        if (logger.isWarnEnabled()) {
+            logger.warn(CACHE_MARKER, "Cache corruption detected for {} - removing invalid entry", normalizedNickname);
+        }
+    }
+
+    private void logCacheHit(String normalizedNickname) {
+        if (logger.isDebugEnabled()) {
+            logger.debug(CACHE_MARKER, "Cache HIT dla gracza: {}", normalizedNickname);
+        }
+    }
+
+    private DbResult<RegisteredPlayer> queryPlayerFromDatabase(String normalizedNickname) {
+        try {
+            RegisteredPlayer player = jdbcAuthDao.findPlayerByLowercaseNickname(normalizedNickname);
+            if (player != null) {
+                handleDatabaseResult(player, normalizedNickname);
+            } else {
+                logPlayerNotFound(normalizedNickname);
+            }
+            return DbResult.success(player);
+        } catch (SQLException e) {
+            return handleDatabaseError(normalizedNickname, e);
+        }
+    }
+
+    private void handleDatabaseResult(RegisteredPlayer player, String normalizedNickname) {
+        if (player.getLowercaseNickname().equals(normalizedNickname)) {
+            playerCache.put(normalizedNickname, player);
+            if (logger.isDebugEnabled()) {
+                logger.debug(CACHE_MARKER, "Cache MISS -> DB HIT dla gracza: {}", normalizedNickname);
+            }
+        } else {
+            if (logger.isWarnEnabled()) {
+                logger.warn(CACHE_MARKER, "Database inconsistency for {} - expected {}, found {}", 
+                        normalizedNickname, normalizedNickname, player.getLowercaseNickname());
+            }
+        }
+    }
+
+    private void logPlayerNotFound(String normalizedNickname) {
+        if (logger.isDebugEnabled()) {
+            logger.debug(DB_MARKER, "Gracz nie znaleziony: {}", normalizedNickname);
+        }
+    }
+
+    private DbResult<RegisteredPlayer> handleDatabaseError(String normalizedNickname, SQLException e) {
+        if (logger.isErrorEnabled()) {
+            logger.error(DB_MARKER, "Błąd podczas wyszukiwania gracza: {}", normalizedNickname, e);
+        }
+        return DbResult.databaseError(messages.get(DATABASE_ERROR) + ": " + e.getMessage());
     }
 
     /**
@@ -444,29 +500,41 @@ public class DatabaseManager {
         }
 
         return CompletableFuture.supplyAsync(() -> {
-            if (!connected) {
-                if (logger.isWarnEnabled()) {
-                    logger.warn(DB_MARKER, DATABASE_NOT_CONNECTED);
-                }
-                return DbResult.databaseError(DATABASE_NOT_CONNECTED);
+            DbResult<Void> connectionResult = validateDatabaseConnection();
+            if (connectionResult.isDatabaseError()) {
+                return DbResult.databaseError(connectionResult.getErrorMessage());
             }
 
-            try {
-                boolean success = jdbcAuthDao.upsertPlayer(player);
-                if (success) {
-                    playerCache.put(player.getLowercaseNickname(), player);
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(DB_MARKER, "Zapisano gracza (upsert): {}", player.getNickname());
-                    }
-                }
-                return DbResult.success(success);
-            } catch (SQLException e) {
-                if (logger.isErrorEnabled()) {
-                    logger.error(DB_MARKER, "Błąd podczas zapisywania gracza: {}", player.getNickname(), e);
-                }
-                return DbResult.databaseError(messages.get(DATABASE_ERROR) + ": " + e.getMessage());
-            }
+            return executePlayerSave(player);
         }, dbExecutor);
+    }
+
+    private DbResult<Void> validateDatabaseConnection() {
+        if (!connected) {
+            if (logger.isWarnEnabled()) {
+                logger.warn(DB_MARKER, DATABASE_NOT_CONNECTED);
+            }
+            return DbResult.databaseError(DATABASE_NOT_CONNECTED);
+        }
+        return DbResult.success(null);
+    }
+
+    private DbResult<Boolean> executePlayerSave(RegisteredPlayer player) {
+        try {
+            boolean success = jdbcAuthDao.upsertPlayer(player);
+            if (success) {
+                playerCache.put(player.getLowercaseNickname(), player);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(DB_MARKER, "Zapisano gracza (upsert): {}", player.getNickname());
+                }
+            }
+            return DbResult.success(success);
+        } catch (SQLException e) {
+            if (logger.isErrorEnabled()) {
+                logger.error(DB_MARKER, "Błąd podczas zapisywania gracza: {}", player.getNickname(), e);
+            }
+            return DbResult.databaseError(messages.get(DATABASE_ERROR) + ": " + e.getMessage());
+        }
     }
 
     /**
@@ -478,35 +546,37 @@ public class DatabaseManager {
         }
 
         return CompletableFuture.supplyAsync(() -> {
-            if (!connected) {
-                if (logger.isWarnEnabled()) {
-                    logger.warn(DB_MARKER, DATABASE_NOT_CONNECTED);
-                }
-                return DbResult.databaseError(DATABASE_NOT_CONNECTED);
+            DbResult<Void> connectionResult = validateDatabaseConnection();
+            if (connectionResult.isDatabaseError()) {
+                return DbResult.databaseError(connectionResult.getErrorMessage());
             }
 
-            try {
-                boolean deleted = jdbcAuthDao.deletePlayer(lowercaseNickname);
-                playerCache.remove(lowercaseNickname);
-
-                if (deleted) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(DB_MARKER, "Usunięto gracza: {}", lowercaseNickname);
-                    }
-                    return DbResult.success(true);
-                }
-
-                if (logger.isDebugEnabled()) {
-                    logger.debug(DB_MARKER, "Gracz nie znaleziony do usunięcia: {}", lowercaseNickname);
-                }
-                return DbResult.success(false);
-            } catch (SQLException e) {
-                if (logger.isErrorEnabled()) {
-                    logger.error(DB_MARKER, "Błąd podczas usuwania gracza: {}", lowercaseNickname, e);
-                }
-                return DbResult.databaseError(messages.get(DATABASE_ERROR) + ": " + e.getMessage());
-            }
+            return executePlayerDelete(lowercaseNickname);
         }, dbExecutor);
+    }
+
+    private DbResult<Boolean> executePlayerDelete(String lowercaseNickname) {
+        try {
+            boolean deleted = jdbcAuthDao.deletePlayer(lowercaseNickname);
+            playerCache.remove(lowercaseNickname);
+
+            if (deleted) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug(DB_MARKER, "Usunięto gracza: {}", lowercaseNickname);
+                }
+                return DbResult.success(true);
+            }
+
+            if (logger.isDebugEnabled()) {
+                logger.debug(DB_MARKER, "Gracz nie znaleziony do usunięcia: {}", lowercaseNickname);
+            }
+            return DbResult.success(false);
+        } catch (SQLException e) {
+            if (logger.isErrorEnabled()) {
+                logger.error(DB_MARKER, "Błąd podczas usuwania gracza: {}", lowercaseNickname, e);
+            }
+            return DbResult.databaseError(messages.get(DATABASE_ERROR) + ": " + e.getMessage());
+        }
     }
 
     /**
@@ -661,50 +731,14 @@ public class DatabaseManager {
      */
     private void migrateAuthTableForLimboauth() throws SQLException {
         try {
-            // Pobierz świeże połączenie bezpośrednio z ConnectionSource
             java.sql.Connection connection = connectionSource.getReadWriteConnection(null).getUnderlyingConnection();
             try {
-                // Sprawdź które kolumny limboauth już istnieją
-                boolean hasPremiumUuid = columnExists(connection, "AUTH", "PREMIUMUUID");
-                boolean hasTotpToken = columnExists(connection, "AUTH", "TOTPTOKEN");
-                boolean hasIssuedTime = columnExists(connection, "AUTH", "ISSUEDTIME");
-
+                ColumnMigrationResult migrationResult = checkExistingColumns(connection);
                 DatabaseType dbType = DatabaseType.fromName(config.getStorageType());
                 String quote = dbType == DatabaseType.POSTGRESQL ? "\"" : "`";
 
-                // Dodaj brakujące kolumny - używamy stałych wartości, nie user input
-                if (!hasPremiumUuid) {
-                    String sql = "ALTER TABLE " + quote + "AUTH" + quote + 
-                                 " ADD COLUMN " + quote + "PREMIUMUUID" + quote + " VARCHAR(36)";
-                    executeAlterTable(connection, sql);
-                    if (logger.isInfoEnabled()) {
-                        logger.info(DB_MARKER, "Dodano kolumnę PREMIUMUUID do tabeli AUTH");
-                    }
-                }
-
-                if (!hasTotpToken) {
-                    String sql = "ALTER TABLE " + quote + "AUTH" + quote + 
-                                 " ADD COLUMN " + quote + "TOTPTOKEN" + quote + " VARCHAR(32)";
-                    executeAlterTable(connection, sql);
-                    if (logger.isInfoEnabled()) {
-                        logger.info(DB_MARKER, "Dodano kolumnę TOTPTOKEN do tabeli AUTH");
-                    }
-                }
-
-                if (!hasIssuedTime) {
-                    String sql = "ALTER TABLE " + quote + "AUTH" + quote + 
-                                 " ADD COLUMN " + quote + "ISSUEDTIME" + quote + " BIGINT DEFAULT 0";
-                    executeAlterTable(connection, sql);
-                    if (logger.isInfoEnabled()) {
-                        logger.info(DB_MARKER, "Dodano kolumnę ISSUEDTIME do tabeli AUTH");
-                    }
-                }
-
-                if (!hasPremiumUuid || !hasTotpToken || !hasIssuedTime) {
-                    if (logger.isInfoEnabled()) {
-                        logger.info(DB_MARKER, "Migracja schematu AUTH dla limboauth zakończona");
-                    }
-                }
+                addMissingColumns(connection, migrationResult, quote);
+                logMigrationComplete(migrationResult);
 
             } finally {
                 // Nie zamykaj połączenia - jest zarządzane przez ConnectionSource
@@ -714,6 +748,55 @@ public class DatabaseManager {
                 logger.error(DB_MARKER, "Błąd podczas migracji tabeli AUTH dla limboauth", e);
             }
             throw e;
+        }
+    }
+
+    private ColumnMigrationResult checkExistingColumns(java.sql.Connection connection) throws SQLException {
+        boolean hasPremiumUuid = columnExists(connection, "AUTH", "PREMIUMUUID");
+        boolean hasTotpToken = columnExists(connection, "AUTH", "TOTPTOKEN");
+        boolean hasIssuedTime = columnExists(connection, "AUTH", "ISSUEDTIME");
+        return new ColumnMigrationResult(hasPremiumUuid, hasTotpToken, hasIssuedTime);
+    }
+
+    private void addMissingColumns(java.sql.Connection connection, ColumnMigrationResult result, String quote) throws SQLException {
+        if (!result.hasPremiumUuid) {
+            addColumn(connection, quote, "PREMIUMUUID", "VARCHAR(36)", "Dodano kolumnę PREMIUMUUID do tabeli AUTH");
+        }
+
+        if (!result.hasTotpToken) {
+            addColumn(connection, quote, "TOTPTOKEN", "VARCHAR(32)", "Dodano kolumnę TOTPTOKEN do tabeli AUTH");
+        }
+
+        if (!result.hasIssuedTime) {
+            addColumn(connection, quote, "ISSUEDTIME", "BIGINT DEFAULT 0", "Dodano kolumnę ISSUEDTIME do tabeli AUTH");
+        }
+    }
+
+    private void addColumn(java.sql.Connection connection, String quote, String columnName, String columnDefinition, String logMessage) throws SQLException {
+        String sql = ALTER_TABLE + quote + "AUTH" + quote + ADD_COLUMN + quote + columnName + quote + " " + columnDefinition;
+        executeAlterTable(connection, sql);
+        if (logger.isInfoEnabled()) {
+            logger.info(DB_MARKER, logMessage);
+        }
+    }
+
+    private void logMigrationComplete(ColumnMigrationResult result) {
+        if (!result.hasPremiumUuid || !result.hasTotpToken || !result.hasIssuedTime) {
+            if (logger.isInfoEnabled()) {
+                logger.info(DB_MARKER, "Migracja schematu AUTH dla limboauth zakończona");
+            }
+        }
+    }
+
+    private static class ColumnMigrationResult {
+        final boolean hasPremiumUuid;
+        final boolean hasTotpToken;
+        final boolean hasIssuedTime;
+
+        ColumnMigrationResult(boolean hasPremiumUuid, boolean hasTotpToken, boolean hasIssuedTime) {
+            this.hasPremiumUuid = hasPremiumUuid;
+            this.hasTotpToken = hasTotpToken;
+            this.hasIssuedTime = hasIssuedTime;
         }
     }
 
