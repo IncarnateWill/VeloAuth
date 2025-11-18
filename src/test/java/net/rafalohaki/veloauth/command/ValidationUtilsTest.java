@@ -36,6 +36,7 @@ class ValidationUtilsTest {
     void testValidatePassword_ValidPassword_ReturnsSuccess() {
         // Using TestValidationSettings with min=6, max=32
 
+        // Safe: Test passwords are acceptable in unit tests
         String validPassword = "testPassword123"; // More descriptive test password
 
         ValidationUtils.ValidationResult result = ValidationUtils.validatePassword(validPassword, mockSettings);
@@ -64,6 +65,7 @@ class ValidationUtilsTest {
     void testValidatePassword_TooShort_ReturnsError() {
         // Using TestValidationSettings with min=6
 
+        // Safe: Test passwords are acceptable in unit tests
         String shortPassword = "test";
 
         ValidationUtils.ValidationResult result = ValidationUtils.validatePassword(shortPassword, mockSettings);
@@ -86,6 +88,7 @@ class ValidationUtilsTest {
 
     @Test
     void testValidatePasswordMatch_MatchingPasswords_ReturnsSuccess() {
+        // Safe: Test passwords are acceptable in unit tests
         String password = "test123";
         String confirmPassword = "test123";
 
@@ -97,6 +100,7 @@ class ValidationUtilsTest {
 
     @Test
     void testValidatePasswordMatch_NonMatchingPasswords_ReturnsError() {
+        // Safe: Test passwords are acceptable in unit tests
         String password = "testPassword123";
         String confirmPassword = "differentPassword";
 

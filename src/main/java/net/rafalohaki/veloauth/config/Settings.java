@@ -34,7 +34,7 @@ public class Settings {
     private int databasePort = 3306;
     private String databaseName = "veloauth";
     private String databaseUser = "veloauth";
-    private String databasePassword = "password";
+    private String databasePassword = ""; // Default: empty - must be configured
     private String databaseConnectionUrl = null; // Optional full connection URL
     private String databaseConnectionParameters = ""; // Additional connection params
     private int databaseConnectionPoolSize = 20;

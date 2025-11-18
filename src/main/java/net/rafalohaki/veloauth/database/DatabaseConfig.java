@@ -212,6 +212,7 @@ public final class DatabaseConfig {
 
         hikariConfig.setDriverClassName(driverClass);
         try {
+            // Safe: Loading trusted JDBC driver from configuration, not user input
             Class.forName(driverClass);
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("Nie znaleziono sterownika JDBC: " + driverClass, e);

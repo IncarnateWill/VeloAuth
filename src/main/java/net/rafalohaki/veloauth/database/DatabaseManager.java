@@ -733,6 +733,7 @@ public class DatabaseManager {
         DatabaseConnection dbConnection = connectionSource.getReadWriteConnection(null);
         try {
             java.sql.Connection connection = dbConnection.getUnderlyingConnection();
+            // SQL Injection safe: Using constant SQL string, not user input
             try (java.sql.Statement stmt = connection.createStatement();
                  java.sql.ResultSet rs = stmt.executeQuery(sql)) {
                 if (rs.next()) {
@@ -882,6 +883,7 @@ public class DatabaseManager {
      * Używa stałych wartości - nie ma ryzyka SQL injection.
      */
     private void executeAlterTable(java.sql.Connection connection, String sql) throws SQLException {
+        // SQL Injection safe: Using constant SQL string, not user input
         try (java.sql.Statement stmt = connection.createStatement()) {
             stmt.execute(sql);
         }

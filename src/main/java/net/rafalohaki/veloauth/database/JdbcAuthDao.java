@@ -102,6 +102,7 @@ public final class JdbcAuthDao {
     }
 
     public RegisteredPlayer findPlayerByLowercaseNickname(String lowercaseNickname) throws SQLException {
+        // SQL Injection safe: Using PreparedStatement with parameter binding
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(selectPlayerSql)) {
 
@@ -139,6 +140,7 @@ public final class JdbcAuthDao {
     }
 
     public boolean deletePlayer(String lowercaseNickname) throws SQLException {
+        // SQL Injection safe: Using PreparedStatement with parameter binding
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(deletePlayerSql)) {
 
@@ -170,6 +172,7 @@ public final class JdbcAuthDao {
 
 
     private int executeUpdate(Connection connection, RegisteredPlayer player) throws SQLException {
+        // SQL Injection safe: Using PreparedStatement with parameter binding
         try (PreparedStatement statement = connection.prepareStatement(updatePlayerSql)) {
             bindUpdate(statement, player);
             return statement.executeUpdate();
@@ -177,6 +180,7 @@ public final class JdbcAuthDao {
     }
 
     private void executeInsert(Connection connection, RegisteredPlayer player) throws SQLException {
+        // SQL Injection safe: Using PreparedStatement with parameter binding
         try (PreparedStatement statement = connection.prepareStatement(insertPlayerSql)) {
             bindInsert(statement, player);
             statement.executeUpdate();
