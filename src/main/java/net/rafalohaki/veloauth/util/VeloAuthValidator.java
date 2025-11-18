@@ -20,17 +20,17 @@ import java.util.regex.Pattern;
 public final class VeloAuthValidator {
 
     // Minecraft username validation (official Minecraft username rules)
-    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]{1,16}$");
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^\\w{1,16}$");
     
     // Password validation - allow most characters but limit length and prevent injection
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^.{3,100}$");
     
     // IP address validation patterns
     private static final Pattern IPV4_PATTERN = Pattern.compile(
-            "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
+            "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
     
     private static final Pattern IPV6_PATTERN = Pattern.compile(
-            "^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$");
+            "(?i)^([0-9a-f]{1,4}:){7}[0-9a-f]{1,4}$|^::1$|^::$");
 
     private VeloAuthValidator() {
         // Utility class - prevent instantiation
@@ -49,7 +49,7 @@ public final class VeloAuthValidator {
         }
 
         // Check length first (quick check)
-        if (username.length() < 1 || username.length() > 16) {
+        if (username.length() > 16) {
             return false;
         }
 
@@ -137,12 +137,6 @@ public final class VeloAuthValidator {
         // Block any local address that's not loopback (security risk)
         if (address.isAnyLocalAddress()) {
             return false;
-        }
-
-        // Configure IPv6 handling based on security requirements
-        if (address instanceof Inet6Address) {
-            // For now, allow IPv6 but this can be configured
-            return true;
         }
 
         return true;
@@ -234,28 +228,15 @@ public final class VeloAuthValidator {
         // Check for common attack patterns
         String lowerUsername = username.toLowerCase();
         
-        // SQL injection patterns
-        if (lowerUsername.contains("drop") || lowerUsername.contains("delete") ||
-            lowerUsername.contains("insert") || lowerUsername.contains("update") ||
-            lowerUsername.contains("select") || lowerUsername.contains("'") ||
-            lowerUsername.contains("\"") || lowerUsername.contains(";")) {
-            return true;
-        }
-
-        // Command injection patterns
-        if (lowerUsername.contains("cmd") || lowerUsername.contains("powershell") ||
-            lowerUsername.contains("bash") || lowerUsername.contains("sh") ||
-            lowerUsername.contains("$") || lowerUsername.contains("`")) {
-            return true;
-        }
-
-        // Path traversal patterns
-        if (lowerUsername.contains("../") || lowerUsername.contains("..\\") ||
-            lowerUsername.contains("/") || lowerUsername.contains("\\")) {
-            return true;
-        }
-
-        return false;
+        return lowerUsername.contains("drop") || lowerUsername.contains("delete") ||
+               lowerUsername.contains("insert") || lowerUsername.contains("update") ||
+               lowerUsername.contains("select") || lowerUsername.contains("'") ||
+               lowerUsername.contains("\"") || lowerUsername.contains(";") ||
+               lowerUsername.contains("cmd") || lowerUsername.contains("powershell") ||
+               lowerUsername.contains("bash") || lowerUsername.contains("sh") ||
+               lowerUsername.contains("$") || lowerUsername.contains("`") ||
+               lowerUsername.contains("../") || lowerUsername.contains("..\\") ||
+               lowerUsername.contains("/") || lowerUsername.contains("\\");
     }
 
     /**

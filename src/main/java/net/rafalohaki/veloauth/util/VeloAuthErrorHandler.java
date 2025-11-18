@@ -126,8 +126,7 @@ public final class VeloAuthErrorHandler {
         }
 
         // Check for connection-related errors
-        if (throwable instanceof SQLException) {
-            SQLException sqlException = (SQLException) throwable;
+        if (throwable instanceof SQLException sqlException) {
             String message = sqlException.getMessage().toLowerCase();
             
             return message.contains("connection") ||
