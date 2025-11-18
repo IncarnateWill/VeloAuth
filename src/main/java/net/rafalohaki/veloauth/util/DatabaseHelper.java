@@ -33,19 +33,19 @@ public final class DatabaseHelper {
     public static CompletableFuture<RegisteredPlayer> findPlayerByNickname(
             DatabaseManager databaseManager, String nickname, Logger logger, Marker marker, Messages messages) {
 
-        String lowercaseNick = nickname.toLowerCase();
-        return databaseManager.findPlayerByNickname(lowercaseNick)
+        // Let DatabaseManager handle normalization internally to prevent cache inconsistencies
+        return databaseManager.findPlayerByNickname(nickname)
                 .thenApply(dbResult -> {
                     // CRITICAL: Fail-secure on database errors
                     if (dbResult.isDatabaseError()) {
                         logger.error(marker, "Database error finding player {}: {}",
-                                lowercaseNick, dbResult.getErrorMessage());
+                                nickname, dbResult.getErrorMessage());
                         return null;
                     }
                     return dbResult.getValue();
                 })
                 .exceptionally(throwable -> {
-                    logger.error(marker, "{}{}", messages.get("database.error.finding"), lowercaseNick, throwable);
+                    logger.error(marker, "{}{}", messages.get("database.error.finding"), nickname, throwable);
                     return null;
                 });
     }

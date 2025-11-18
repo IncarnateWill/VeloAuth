@@ -323,17 +323,30 @@ public class DatabaseManager {
     /**
      * Znajduje gracza po lowercase nickname z wykorzystaniem cache + natywnego JDBC.
      * Zwraca DbResult dla rozróżnienia między "nie znaleziono" a "błąd bazy danych".
+     * 
+     * CRITICAL FIX: Ensure cache key consistency by always normalizing to lowercase
+     * to prevent race conditions when switching between accounts rapidly.
      */
-    public CompletableFuture<DbResult<RegisteredPlayer>> findPlayerByNickname(String lowercaseNickname) {
-        if (lowercaseNickname == null || lowercaseNickname.isEmpty()) {
+    public CompletableFuture<DbResult<RegisteredPlayer>> findPlayerByNickname(String nickname) {
+        if (nickname == null || nickname.isEmpty()) {
             return CompletableFuture.completedFuture(DbResult.success(null));
         }
 
+        // ALWAYS normalize to lowercase for consistent cache keys
+        String normalizedNickname = nickname.toLowerCase();
+        
         return CompletableFuture.supplyAsync(() -> {
-            RegisteredPlayer cached = playerCache.get(lowercaseNickname);
+            RegisteredPlayer cached = playerCache.get(normalizedNickname);
             if (cached != null) {
-                logger.debug(CACHE_MARKER, "Cache HIT dla gracza: {}", lowercaseNickname);
-                return DbResult.success(cached);
+                // Additional validation: ensure the cached player matches the requested nickname
+                if (!cached.getLowercaseNickname().equals(normalizedNickname)) {
+                    // Cache corruption detected - remove invalid entry
+                    playerCache.remove(normalizedNickname);
+                    logger.warn(CACHE_MARKER, "Cache corruption detected for {} - removing invalid entry", normalizedNickname);
+                } else {
+                    logger.debug(CACHE_MARKER, "Cache HIT dla gracza: {}", normalizedNickname);
+                    return DbResult.success(cached);
+                }
             }
 
             if (!connected || !isHealthy()) {
@@ -342,16 +355,22 @@ public class DatabaseManager {
             }
 
             try {
-                RegisteredPlayer player = jdbcAuthDao.findPlayerByLowercaseNickname(lowercaseNickname);
+                RegisteredPlayer player = jdbcAuthDao.findPlayerByLowercaseNickname(normalizedNickname);
                 if (player != null) {
-                    playerCache.put(lowercaseNickname, player);
-                    logger.debug(CACHE_MARKER, "Cache MISS -> DB HIT dla gracza: {}", lowercaseNickname);
+                    // Double-check: only cache if the keys match
+                    if (player.getLowercaseNickname().equals(normalizedNickname)) {
+                        playerCache.put(normalizedNickname, player);
+                        logger.debug(CACHE_MARKER, "Cache MISS -> DB HIT dla gracza: {}", normalizedNickname);
+                    } else {
+                        logger.warn(CACHE_MARKER, "Database inconsistency for {} - expected {}, found {}", 
+                                normalizedNickname, normalizedNickname, player.getLowercaseNickname());
+                    }
                 } else {
-                    logger.debug(DB_MARKER, "Gracz nie znaleziony: {}", lowercaseNickname);
+                    logger.debug(DB_MARKER, "Gracz nie znaleziony: {}", normalizedNickname);
                 }
                 return DbResult.success(player);
             } catch (SQLException e) {
-                logger.error(DB_MARKER, "Błąd podczas wyszukiwania gracza: {}", lowercaseNickname, e);
+                logger.error(DB_MARKER, "Błąd podczas wyszukiwania gracza: {}", normalizedNickname, e);
                 // CRITICAL: Return database error instead of null to prevent bypass
                 return DbResult.databaseError(messages.get(StringConstants.DATABASE_ERROR) + ": " + e.getMessage());
             }

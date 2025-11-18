@@ -71,8 +71,7 @@ public final class AuthenticationHelper {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Check if player already exists
-                String lowercaseNick = context.username().toLowerCase();
-                var existingResult = context.databaseManager().findPlayerByNickname(lowercaseNick).join();
+                var existingResult = context.databaseManager().findPlayerByNickname(context.username()).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (existingResult.isDatabaseError()) {
@@ -136,8 +135,7 @@ public final class AuthenticationHelper {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Find player in database
-                String lowercaseNick = username.toLowerCase();
-                var playerResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
+                var playerResult = databaseManager.findPlayerByNickname(username).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (playerResult.isDatabaseError()) {
@@ -183,8 +181,7 @@ public final class AuthenticationHelper {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Find player in database
-                String lowercaseNick = context.username().toLowerCase();
-                var playerResult = context.databaseManager().findPlayerByNickname(lowercaseNick).join();
+                var playerResult = context.databaseManager().findPlayerByNickname(context.username()).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (playerResult.isDatabaseError()) {
@@ -243,8 +240,7 @@ public final class AuthenticationHelper {
      */
     private static RegisteredPlayer validatePlayerForDeletion(AccountDeletionContext context) {
         // Find player in database
-        String lowercaseNick = context.username().toLowerCase();
-        var playerResult = context.databaseManager().findPlayerByNickname(lowercaseNick).join();
+        var playerResult = context.databaseManager().findPlayerByNickname(context.username()).join();
 
         // CRITICAL: Fail-secure on database errors
         if (playerResult.isDatabaseError()) {
@@ -317,8 +313,7 @@ public final class AuthenticationHelper {
                 }
 
                 // Execute the deletion
-                String lowercaseNick = context.username().toLowerCase();
-                return executeDeletion(context, lowercaseNick);
+                return executeDeletion(context, context.username());
 
             } catch (Exception e) {
                 context.logger().error(context.dbMarker(), context.messages().get("player.account.deletion.error"), context.username(), e);

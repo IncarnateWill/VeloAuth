@@ -174,10 +174,11 @@ public class CommandHandler {
 
         private void processLogin(Player player, String password, InetAddress playerAddress) {
             try {
-                String lowercaseNick = player.getUsername().toLowerCase();
+                // Use original username - let DatabaseManager handle normalization
+                String username = player.getUsername();
 
                 // Znajdź gracza w bazie danych
-                var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
+                var dbResult = databaseManager.findPlayerByNickname(username).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(dbResult, player, "Login")) {
@@ -369,13 +370,14 @@ public class CommandHandler {
          * @param playerAddress Player's IP for security checks
          */
         private void executeRegistrationTransaction(Player player, String password, InetAddress playerAddress) {
-            String lowercaseNick = player.getUsername().toLowerCase();
+            // Use original username - let DatabaseManager handle normalization
+            String username = player.getUsername();
 
             // Uruchom wszystko w transakcji dla atomowości
             // skipcq: JAVA-W1087 - Future handled with whenComplete, fire-and-forget operation
             databaseManager.executeInTransaction(() -> {
                 // 1. Check if player already exists
-                var existingResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
+                var existingResult = databaseManager.findPlayerByNickname(username).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(existingResult, player, "Registration check failed for")) {
@@ -393,7 +395,7 @@ public class CommandHandler {
                         .hashToString(settings.getBcryptCost(), password.toCharArray());
 
                 RegisteredPlayer newPlayer = new RegisteredPlayer(
-                        player.getUsername(),
+                        username,
                         hashedPassword,
                         ValidationUtils.getPlayerIp(player),
                         player.getUniqueId().toString()
@@ -410,7 +412,7 @@ public class CommandHandler {
                 boolean saved = saveResult.getValue();
                 if (!saved) {
                     player.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
-                    logger.error(DB_MARKER, "Nie udało się zapisać nowego gracza: {}", lowercaseNick);
+                    logger.error(DB_MARKER, "Nie udało się zapisać nowego gracza: {}", username);
                     return false;
                 }
 
@@ -422,7 +424,7 @@ public class CommandHandler {
 
                 player.sendMessage(ValidationUtils.createSuccessComponent(messages.get("auth.register.success")));
                 logger.info(AUTH_MARKER, "Gracz {} zarejestrował się z IP {}",
-                        player.getUsername(), ValidationUtils.getPlayerIp(player));
+                        username, ValidationUtils.getPlayerIp(player));
 
                 // 5. Auto-login after registration - add to auth cache
                 var premiumResult = databaseManager.isPremium(player.getUsername()).join();
@@ -500,10 +502,11 @@ public class CommandHandler {
             }
 
             try {
-                String lowercaseNick = player.getUsername().toLowerCase();
+                // Use original username - let DatabaseManager handle normalization
+                String username = player.getUsername();
 
                 // Znajdź gracza w bazie danych
-                var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
+                var dbResult = databaseManager.findPlayerByNickname(username).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(dbResult, player, "Password change failed for")) {
@@ -566,11 +569,11 @@ public class CommandHandler {
                     // Rozłącz wszystkie duplikaty tego gracza
                     plugin.getServer().getAllPlayers().stream()
                             .filter(p -> !p.equals(player))
-                            .filter(p -> p.getUsername().equalsIgnoreCase(lowercaseNick))
+                            .filter(p -> p.getUsername().equalsIgnoreCase(username))
                             .forEach(p -> {
                                 p.disconnect(ValidationUtils.createWarningComponent(messages.get("general.kick.message")));
                                 logger.warn("Rozłączono duplikat gracza {} - zmiana hasła z IP {}",
-                                        lowercaseNick, ValidationUtils.getPlayerIp(player));
+                                        username, ValidationUtils.getPlayerIp(player));
                             });
 
                     player.sendMessage(ValidationUtils.createSuccessComponent(messages.get("auth.changepassword.success")));
@@ -620,10 +623,11 @@ public class CommandHandler {
 
         private void processAdminUnregistration(CommandSource source, String nickname) {
             try {
-                String lowercaseNick = nickname.toLowerCase();
+                // Use original nickname - let DatabaseManager handle normalization
+                String username = nickname;
 
                 // Znajdź gracza w bazie danych
-                var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
+                var dbResult = databaseManager.findPlayerByNickname(username).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (dbResult.isDatabaseError()) {
@@ -646,7 +650,7 @@ public class CommandHandler {
                 }
 
                 // Usuń z bazy danych (bez weryfikacji hasła - admin ma pełne uprawnienia)
-                var deleteResult = databaseManager.deletePlayer(lowercaseNick).join();
+                var deleteResult = databaseManager.deletePlayer(username).join();
 
                 // CRITICAL: Fail-secure on database errors
                 if (deleteResult.isDatabaseError()) {
