@@ -291,8 +291,7 @@ public class AuthListener {
             // Premium check został przeniesiony do PreLoginEvent
 
         } catch (Exception e) {
-            logger.error("Błąd podczas obsługi LoginEvent dla gracza: "
-                    + event.getPlayer().getUsername(), e);
+            logger.error("Błąd podczas obsługi LoginEvent dla gracza: {}", event.getPlayer().getUsername(), e);
 
             event.setResult(LoginEvent.ComponentResult.denied(
                     Component.text("Wystąpił błąd podczas łączenia. Spróbuj ponownie.",

@@ -169,7 +169,7 @@ public final class DatabaseHelper {
                     return dbResult.getValue();
                 })
                 .exceptionally(throwable -> {
-                    logger.error(marker, messages.get("database.error.saving") + player.getNickname(), throwable);
+                    logger.error(marker, "{}{}", messages.get("database.error.saving"), player.getNickname(), throwable);
                     return false;
                 });
     }
@@ -199,7 +199,7 @@ public final class DatabaseHelper {
                     return dbResult.getValue();
                 })
                 .exceptionally(throwable -> {
-                    logger.error(marker, messages.get("database.error.deleting") + lowercaseNick, throwable);
+                    logger.error(marker, "{}{}", messages.get("database.error.deleting"), lowercaseNick, throwable);
                     return false;
                 });
     }
@@ -228,7 +228,7 @@ public final class DatabaseHelper {
                     return dbResult.getValue();
                 })
                 .exceptionally(throwable -> {
-                    logger.warn(marker, messages.get("database.error.checking_premium") + username, throwable);
+                    logger.warn(marker, "{}{}", messages.get("database.error.checking_premium"), username, throwable);
                     return false; // Default to non-premium on error
                 });
     }
@@ -254,7 +254,7 @@ public final class DatabaseHelper {
 
         return databaseManager.executeInTransaction(operation)
                 .exceptionally(throwable -> {
-                    logger.error(marker, messages.get("database.error.transaction") + operationName, throwable);
+                    logger.error(marker, "{}{}", messages.get("database.error.transaction"), operationName, throwable);
                     return false;
                 });
     }
@@ -278,7 +278,7 @@ public final class DatabaseHelper {
             player.updateLoginData(playerIp);
             return savePlayer(databaseManager, player, logger, marker, messages);
         } catch (Exception e) {
-            logger.error(marker, messages.get("database.error.updating_login") + player.getNickname(), e);
+            logger.error(marker, "{}{}", messages.get("database.error.updating_login"), player.getNickname(), e);
             return CompletableFuture.completedFuture(false);
         }
     }
