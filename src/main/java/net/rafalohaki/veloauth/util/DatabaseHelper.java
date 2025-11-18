@@ -38,7 +38,7 @@ public final class DatabaseHelper {
                 .thenApply(dbResult -> {
                     // CRITICAL: Fail-secure on database errors
                     if (dbResult.isDatabaseError()) {
-                        logger.error(marker, "Database error finding player {}: {}", 
+                        logger.error(marker, "Database error finding player {}: {}",
                                 lowercaseNick, dbResult.getErrorMessage());
                         return null;
                     }
@@ -67,7 +67,7 @@ public final class DatabaseHelper {
                 .thenApply(dbResult -> {
                     // CRITICAL: Fail-secure on database errors
                     if (dbResult.isDatabaseError()) {
-                        logger.error(marker, "Database error saving player {}: {}", 
+                        logger.error(marker, "Database error saving player {}: {}",
                                 player.getNickname(), dbResult.getErrorMessage());
                         return false;
                     }
@@ -97,7 +97,7 @@ public final class DatabaseHelper {
                 .thenApply(dbResult -> {
                     // CRITICAL: Fail-secure on database errors
                     if (dbResult.isDatabaseError()) {
-                        logger.error(marker, "Database error deleting player {}: {}", 
+                        logger.error(marker, "Database error deleting player {}: {}",
                                 lowercaseNick, dbResult.getErrorMessage());
                         return false;
                     }
@@ -126,7 +126,7 @@ public final class DatabaseHelper {
                 .thenApply(dbResult -> {
                     // CRITICAL: Fail-secure on database errors
                     if (dbResult.isDatabaseError()) {
-                        logger.warn(marker, "Database error checking premium status for {}: {}", 
+                        logger.warn(marker, "Database error checking premium status for {}: {}",
                                 username, dbResult.getErrorMessage());
                         return false; // Default to non-premium on error
                     }
@@ -195,7 +195,7 @@ public final class DatabaseHelper {
      * @param marker        Marker for categorized logging
      * @param operationName Name of the operation
      * @param playerName    Player name for context
-     * @param messages        Messages system for i18n
+     * @param messages      Messages system for i18n
      * @return Function to handle database exceptions
      */
     public static Function<Throwable, Void> createDatabaseErrorHandler(

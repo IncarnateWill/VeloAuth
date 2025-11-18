@@ -131,7 +131,7 @@ public final class JdbcAuthDao {
             return statement.executeUpdate() > 0;
         }
     }
-    
+
     /**
      * Wykonuje prosty health check bazy danych.
      * Zwraca true jeśli połączenie jest zdrowe.

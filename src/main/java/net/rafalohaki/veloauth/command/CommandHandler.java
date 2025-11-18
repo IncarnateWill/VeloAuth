@@ -7,11 +7,11 @@ import com.velocitypowered.api.proxy.Player;
 import net.rafalohaki.veloauth.VeloAuth;
 import net.rafalohaki.veloauth.cache.AuthCache;
 import net.rafalohaki.veloauth.config.Settings;
+import net.rafalohaki.veloauth.constants.StringConstants;
 import net.rafalohaki.veloauth.database.DatabaseManager;
 import net.rafalohaki.veloauth.i18n.Messages;
 import net.rafalohaki.veloauth.model.CachedAuthUser;
 import net.rafalohaki.veloauth.model.RegisteredPlayer;
-import net.rafalohaki.veloauth.constants.StringConstants;
 import net.rafalohaki.veloauth.util.SecurityHelper;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -99,20 +99,19 @@ public class CommandHandler {
         logger.info("Komendy wyrejestrowane");
     }
 
-    
 
     /**
      * Handles database errors consistently across all commands.
      * Centralized utility to eliminate code duplication.
      *
-     * @param result Database result to check
-     * @param player Player to send error message to
+     * @param result    Database result to check
+     * @param player    Player to send error message to
      * @param operation Description of the operation being performed
      * @return true if there was a database error (handled), false if operation can continue
      */
     private boolean handleDatabaseError(DatabaseManager.DbResult<?> result, Player player, String operation) {
         if (result.isDatabaseError()) {
-            logger.error(SECURITY_MARKER, "[DATABASE ERROR] {} failed for {}: {}", 
+            logger.error(SECURITY_MARKER, "[DATABASE ERROR] {} failed for {}: {}",
                     operation, player.getUsername(), result.getErrorMessage());
             player.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
             return true;
@@ -146,10 +145,10 @@ public class CommandHandler {
             // Sprawdź IP-based rate limiting PRZED sprawdzeniem autoryzacji
             InetAddress playerAddress = ValidationUtils.getPlayerAddress(player);
             SecurityHelper.SecurityContext securityContext = new SecurityHelper.SecurityContext(
-                    ipRateLimiter, authCache, playerAddress, logger, SECURITY_MARKER, 
+                    ipRateLimiter, authCache, playerAddress, logger, SECURITY_MARKER,
                     player.getUsername(), "logowania"
             );
-            
+
             SecurityHelper.SecurityCheckResult securityResult = SecurityHelper.performSecurityChecks(securityContext);
             if (!securityResult.passed()) {
                 player.sendMessage(ValidationUtils.createErrorComponent(messages.get(messages.getCurrentLanguage(), "auth.login.too_many_attempts", "5")));
@@ -179,7 +178,7 @@ public class CommandHandler {
 
                 // Znajdź gracza w bazie danych
                 var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(dbResult, player, "Login")) {
                     return;
@@ -213,12 +212,12 @@ public class CommandHandler {
                 // Aktualizuj dane logowania
                 registeredPlayer.updateLoginData(ValidationUtils.getPlayerIp(player));
                 var saveResult = databaseManager.savePlayer(registeredPlayer).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(saveResult, player, "Failed to save login data for")) {
                     return;
                 }
-                
+
                 boolean saved = saveResult.getValue();
                 if (!saved) {
                     logger.error(DB_MARKER, "Nie udało się zapisać danych logowania dla gracza: {}", player.getUsername());
@@ -228,12 +227,12 @@ public class CommandHandler {
 
                 // Dodaj do cache autoryzacji
                 var premiumResult = databaseManager.isPremium(player.getUsername()).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(premiumResult, player, "Failed to check premium status for")) {
                     return;
                 }
-                
+
                 boolean isPremium = premiumResult.getValue();
                 CachedAuthUser cachedUser = CachedAuthUser.fromRegisteredPlayer(registeredPlayer, isPremium);
                 authCache.addAuthorizedPlayer(player.getUniqueId(), cachedUser);
@@ -315,10 +314,10 @@ public class CommandHandler {
             // Sprawdź IP-based rate limiting dla rejestracji
             InetAddress playerAddress = ValidationUtils.getPlayerAddress(player);
             SecurityHelper.SecurityContext securityContext = new SecurityHelper.SecurityContext(
-                    ipRateLimiter, authCache, playerAddress, logger, SECURITY_MARKER, 
+                    ipRateLimiter, authCache, playerAddress, logger, SECURITY_MARKER,
                     player.getUsername(), "rejestracji"
             );
-            
+
             SecurityHelper.SecurityCheckResult securityResult = SecurityHelper.performSecurityChecks(securityContext);
             if (!securityResult.passed()) {
                 player.sendMessage(ValidationUtils.createErrorComponent(messages.get(messages.getCurrentLanguage(), "auth.login.too_many_attempts", "5")));
@@ -364,9 +363,9 @@ public class CommandHandler {
 
         /**
          * Executes the registration database transaction with all necessary steps.
-         * 
-         * @param player Player to register
-         * @param password Plain password to hash and store
+         *
+         * @param player        Player to register
+         * @param password      Plain password to hash and store
          * @param playerAddress Player's IP for security checks
          */
         private void executeRegistrationTransaction(Player player, String password, InetAddress playerAddress) {
@@ -377,7 +376,7 @@ public class CommandHandler {
             databaseManager.executeInTransaction(() -> {
                 // 1. Check if player already exists
                 var existingResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(existingResult, player, "Registration check failed for")) {
                     return false;
@@ -402,12 +401,12 @@ public class CommandHandler {
 
                 // 3. Save to database
                 var saveResult = databaseManager.savePlayer(newPlayer).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(saveResult, player, "Failed to save new player")) {
                     return false;
                 }
-                
+
                 boolean saved = saveResult.getValue();
                 if (!saved) {
                     player.sendMessage(ValidationUtils.createErrorComponent(messages.get(StringConstants.ERROR_DATABASE_QUERY)));
@@ -427,12 +426,12 @@ public class CommandHandler {
 
                 // 5. Auto-login after registration - add to auth cache
                 var premiumResult = databaseManager.isPremium(player.getUsername()).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(premiumResult, player, "Failed to check premium status for")) {
                     return false;
                 }
-                
+
                 boolean isPremium = premiumResult.getValue();
                 CachedAuthUser cachedUser = CachedAuthUser.fromRegisteredPlayer(newPlayer, isPremium);
                 authCache.addAuthorizedPlayer(player.getUniqueId(), cachedUser);
@@ -505,12 +504,12 @@ public class CommandHandler {
 
                 // Znajdź gracza w bazie danych
                 var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(dbResult, player, "Password change failed for")) {
                     return;
                 }
-                
+
                 RegisteredPlayer registeredPlayer = dbResult.getValue();
                 if (registeredPlayer == null) {
                     player.sendMessage(ValidationUtils.createErrorComponent(messages.get("auth.login.not_registered")));
@@ -535,12 +534,12 @@ public class CommandHandler {
 
                 // Zapisz do bazy danych
                 var saveResult = databaseManager.savePlayer(registeredPlayer).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (handleDatabaseError(saveResult, player, "Password change save failed for")) {
                     return;
                 }
-                
+
                 boolean saved = saveResult.getValue();
 
                 if (saved) {
@@ -552,7 +551,7 @@ public class CommandHandler {
 
                     // Jeśli gracz ma premium, sprawdź status i usuń z premium cache
                     var premiumCheckResult = databaseManager.isPremium(player.getUsername()).join();
-                    
+
                     // CRITICAL: Fail-secure on database errors
                     if (handleDatabaseError(premiumCheckResult, player, "Premium check failed during password change for")) {
                         // Continue with password change even if premium check fails
@@ -625,15 +624,15 @@ public class CommandHandler {
 
                 // Znajdź gracza w bazie danych
                 var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (dbResult.isDatabaseError()) {
-                    logger.error(SECURITY_MARKER, "[DATABASE ERROR] Admin unregistration failed for {}: {}", 
+                    logger.error(SECURITY_MARKER, "[DATABASE ERROR] Admin unregistration failed for {}: {}",
                             nickname, dbResult.getErrorMessage());
                     CommandHelper.sendError(source, messages, StringConstants.ERROR_DATABASE_QUERY);
                     return;
                 }
-                
+
                 RegisteredPlayer registeredPlayer = dbResult.getValue();
                 if (registeredPlayer == null) {
                     source.sendMessage(ValidationUtils.createErrorComponent("Gracz " + nickname + " nie został znaleziony w bazie danych!"));
@@ -648,22 +647,22 @@ public class CommandHandler {
 
                 // Usuń z bazy danych (bez weryfikacji hasła - admin ma pełne uprawnienia)
                 var deleteResult = databaseManager.deletePlayer(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (deleteResult.isDatabaseError()) {
-                    logger.error(SECURITY_MARKER, "[DATABASE ERROR] Admin unregistration delete failed for {}: {}", 
+                    logger.error(SECURITY_MARKER, "[DATABASE ERROR] Admin unregistration delete failed for {}: {}",
                             nickname, deleteResult.getErrorMessage());
                     CommandHelper.sendError(source, messages, StringConstants.ERROR_DATABASE_QUERY);
                     return;
                 }
-                
+
                 boolean deleted = deleteResult.getValue();
 
                 if (deleted) {
                     // Usuń z cache autoryzacji używając UUID
                     authCache.removeAuthorizedPlayer(playerUuid);
                     authCache.endSession(playerUuid);
-                    
+
                     // Usuń z premium cache jeśli był
                     authCache.removePremiumPlayer(nickname);
 
@@ -674,7 +673,7 @@ public class CommandHandler {
                     });
 
                     CommandHelper.sendSuccess(source, "Konto gracza " + nickname + " zostało usunięte!");
-                    logger.info(AUTH_MARKER, "Administrator {} usunął konto gracza {}", 
+                    logger.info(AUTH_MARKER, "Administrator {} usunął konto gracza {}",
                             source instanceof Player ? ((Player) source).getUsername() : "CONSOLE", nickname);
 
                 } else {
@@ -692,8 +691,8 @@ public class CommandHandler {
          * Parses player UUID from RegisteredPlayer with error handling.
          *
          * @param registeredPlayer The registered player containing UUID string
-         * @param nickname Player nickname for error reporting
-         * @param source Command source for error messages
+         * @param nickname         Player nickname for error reporting
+         * @param source           Command source for error messages
          * @return UUID if valid, null if invalid (error already reported)
          */
         private UUID parsePlayerUuid(RegisteredPlayer registeredPlayer, String nickname, CommandSource source) {
@@ -786,7 +785,7 @@ public class CommandHandler {
             return List.of();
         }
 
-        
+
     }
 
 }

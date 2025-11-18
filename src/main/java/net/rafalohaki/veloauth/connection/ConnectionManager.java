@@ -77,9 +77,9 @@ public class ConnectionManager {
             try {
                 // CRITICAL SECURITY: Block connections until plugin is fully initialized
                 if (!plugin.isInitialized()) {
-                    logger.warn("🔒 BLOKADA STARTU: Gracz {} próbował połączyć się przed pełną inicjalizacją VeloAuth - rozłączanie", 
+                    logger.warn("🔒 BLOKADA STARTU: Gracz {} próbował połączyć się przed pełną inicjalizacją VeloAuth - rozłączanie",
                             player.getUsername());
-                    
+
                     player.disconnect(Component.text(
                             "VeloAuth się uruchamia. Spróbuj połączyć się ponownie za chwilę.",
                             NamedTextColor.RED
@@ -142,10 +142,10 @@ public class ConnectionManager {
             // Sprawdź w bazie danych dla bezpieczeństwa
             String lowercaseNick = player.getUsername().toLowerCase();
             var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-            
+
             // CRITICAL: Fail-secure on database errors
             if (dbResult.isDatabaseError()) {
-                logger.error("Database error during player verification for {}: {}", 
+                logger.error("Database error during player verification for {}: {}",
                         player.getUsername(), dbResult.getErrorMessage());
                 // Remove from cache and deny access for security
                 authCache.removeAuthorizedPlayer(player.getUniqueId());
@@ -156,7 +156,7 @@ public class ConnectionManager {
                 ));
                 return false;
             }
-            
+
             RegisteredPlayer dbPlayer = dbResult.getValue();
             if (dbPlayer == null) {
                 // Gracz nie istnieje w bazie - usuń z cache i prześlij na PicoLimbo

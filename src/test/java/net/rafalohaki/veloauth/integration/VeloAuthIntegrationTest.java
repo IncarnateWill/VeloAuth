@@ -182,7 +182,7 @@ class VeloAuthIntegrationTest {
 
         // Test: Premium player detection
         CompletableFuture<DatabaseManager.DbResult<Boolean>> premiumCheck = databaseManager.isPremium(premiumName);
-        
+
         // Should complete without exceptions
         assertDoesNotThrow(() -> {
             DatabaseManager.DbResult<Boolean> dbResult = premiumCheck.join();

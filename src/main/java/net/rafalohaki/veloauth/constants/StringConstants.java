@@ -6,10 +6,6 @@ package net.rafalohaki.veloauth.constants;
  */
 public final class StringConstants {
 
-    private StringConstants() {
-        // Utility class - prevent instantiation
-    }
-
     // Error message keys
     public static final String ERROR_PLAYER_ONLY = "error.player_only";
     public static final String ERROR_DATABASE_QUERY = "error.database.query";
@@ -17,7 +13,10 @@ public final class StringConstants {
     public static final String DATABASE_ERROR = "database.error";
     public static final String ADMIN_STATS_CACHE_SIZE = "admin.stats.cache_size";
     public static final String PLAYER_NOT_FOUND = "player.not_found";
-
     // Common string values
     public static final String UNKNOWN = "unknown";
+
+    private StringConstants() {
+        // Utility class - prevent instantiation
+    }
 }

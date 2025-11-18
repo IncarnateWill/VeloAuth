@@ -97,7 +97,7 @@ public class DatabaseManager {
     /**
      * Tworzy nowy DatabaseManager.
      *
-     * @param config Konfiguracja bazy danych
+     * @param config   Konfiguracja bazy danych
      * @param messages System wiadomości i18n
      */
     public DatabaseManager(DatabaseConfig config, Messages messages) {
@@ -167,7 +167,7 @@ public class DatabaseManager {
 
                     connected = true;
                     logger.info(DB_MARKER, messages.get("database.manager.connected"), config.getStorageType());
-                    
+
                     // Uruchom health checks co 30 sekund
                     startHealthChecks();
 
@@ -227,10 +227,10 @@ public class DatabaseManager {
                 logger.error(DB_MARKER, "Błąd podczas health check bazy danych", e);
             }
         }, 30, 30, TimeUnit.SECONDS); // Start po 30 sekundach, co 30 sekund
-        
+
         logger.info(DB_MARKER, messages.get("database.manager.health_checks_started"));
     }
-    
+
     /**
      * Wykonuje health check bazy danych.
      */
@@ -240,12 +240,12 @@ public class DatabaseManager {
                 logger.debug(DB_MARKER, "Health check pominięty - baza danych nie jest połączona");
                 return;
             }
-            
+
             // Prosty health check - wykonujemy szybkie zapytanie
             boolean healthy = jdbcAuthDao.healthCheck();
             lastHealthCheckTime = System.currentTimeMillis();
             lastHealthCheckPassed = healthy;
-            
+
             if (!healthy) {
                 logger.warn(DB_MARKER, "\u274C Database health check FAILED - connection may be unstable");
                 // Don't set connected=false for single health check failure
@@ -253,7 +253,7 @@ public class DatabaseManager {
             } else {
                 logger.debug(DB_MARKER, "\u2705 Database health check PASSED");
             }
-            
+
         } catch (Exception e) {
             lastHealthCheckTime = System.currentTimeMillis();
             lastHealthCheckPassed = false;
@@ -262,27 +262,28 @@ public class DatabaseManager {
             logger.error(DB_MARKER, "❌ Database health check FAILED with exception: {}", e.getMessage());
         }
     }
-    
+
     /**
      * Sprawdza czy baza danych jest zdrowa (ostatni health check passed).
      */
     public boolean isHealthy() {
         return connected; // Trust HikariCP connection management
     }
-    
+
     /**
      * Zwraca czas ostatniego health checku.
      */
     public long getLastHealthCheckTime() {
         return lastHealthCheckTime;
     }
-    
+
     /**
      * Zwraca czy ostatni health check był pozytywny.
      */
     public boolean wasLastHealthCheckPassed() {
         return lastHealthCheckPassed;
     }
+
     public void shutdown() {
         try {
             // Zatrzymaj health checks najpierw
@@ -298,7 +299,7 @@ public class DatabaseManager {
                 }
                 logger.info(DB_MARKER, "Health checks zatrzymane");
             }
-            
+
             databaseLock.lock();
             try {
                 if (connectionSource != null) {
@@ -317,91 +318,6 @@ public class DatabaseManager {
         } finally {
             dbExecutor.shutdown();
         }
-    }
-
-    /**
-     * Result wrapper for database operations that distinguishes between
-     * "not found" and "database error" states for fail-secure behavior.
-     * 
-     * <p>This wrapper is critical for security as it prevents authentication bypass
-     * when the database is unavailable. Without this distinction, a SQLException
-     * could be interpreted as "player not found" and allow unauthorized access.
-     * 
-     * <p>Usage examples:
-     * <pre>{@code
-     * var result = databaseManager.findPlayerByNickname("player").join();
-     * if (result.isDatabaseError()) {
-     *     // Database unavailable - deny access for security
-     *     return false;
-     * }
-     * RegisteredPlayer player = result.getValue();
-     * if (player == null) {
-     *     // Player legitimately not found
-     *     return false;
-     * }
-     * // Proceed with authentication
-     * }</pre>
-     * 
-     * @param <T> the type of value returned by the database operation
-     */
-    public static final class DbResult<T> {
-        private final T value;
-        private final boolean isDatabaseError;
-        private final String errorMessage;
-        
-        private DbResult(T value, boolean isDatabaseError, String errorMessage) {
-            this.value = value;
-            this.isDatabaseError = isDatabaseError;
-            this.errorMessage = errorMessage;
-        }
-        
-        /**
-         * Creates a successful DbResult with the given value.
-         * 
-         * @param value the successful result value
-         * @return DbResult indicating success
-         */
-        public static <T> DbResult<T> success(T value) {
-            return new DbResult<>(value, false, null);
-        }
-        
-        /**
-         * Creates a DbResult indicating a database error.
-         * 
-         * @param errorMessage the error message describing what went wrong
-         * @return DbResult indicating database error
-         */
-        public static <T> DbResult<T> databaseError(String errorMessage) {
-            return new DbResult<>(null, true, errorMessage);
-        }
-        
-        /**
-         * Gets the value from a successful database operation.
-         * 
-         * @return the operation result value, or null if this was an error
-         */
-        public T getValue() { return value; }
-        
-        /**
-         * Checks if this result represents a database error.
-         * 
-         * @return true if database error occurred, false for success
-         */
-        public boolean isDatabaseError() { return isDatabaseError; }
-        
-        /**
-         * Gets the error message from a failed database operation.
-         * 
-         * @return the error message, or null if this was successful
-         */
-        public String getErrorMessage() { return errorMessage; }
-        
-        /**
-         * Checks if this result represents a successful operation.
-         * 
-         * @return true if operation succeeded, false for database error
-         */
-        public boolean isSuccess() { return !isDatabaseError; }
     }
 
     /**
@@ -607,7 +523,6 @@ public class DatabaseManager {
         return premiumUuidDao;
     }
 
-
     /**
      * Tworzy tabele jeśli nie istnieją.
      */
@@ -666,6 +581,99 @@ public class DatabaseManager {
                     connectionSource.releaseConnection(connection);
                 }
             }
+        }
+    }
+
+    /**
+     * Result wrapper for database operations that distinguishes between
+     * "not found" and "database error" states for fail-secure behavior.
+     *
+     * <p>This wrapper is critical for security as it prevents authentication bypass
+     * when the database is unavailable. Without this distinction, a SQLException
+     * could be interpreted as "player not found" and allow unauthorized access.
+     *
+     * <p>Usage examples:
+     * <pre>{@code
+     * var result = databaseManager.findPlayerByNickname("player").join();
+     * if (result.isDatabaseError()) {
+     *     // Database unavailable - deny access for security
+     *     return false;
+     * }
+     * RegisteredPlayer player = result.getValue();
+     * if (player == null) {
+     *     // Player legitimately not found
+     *     return false;
+     * }
+     * // Proceed with authentication
+     * }</pre>
+     *
+     * @param <T> the type of value returned by the database operation
+     */
+    public static final class DbResult<T> {
+        private final T value;
+        private final boolean isDatabaseError;
+        private final String errorMessage;
+
+        private DbResult(T value, boolean isDatabaseError, String errorMessage) {
+            this.value = value;
+            this.isDatabaseError = isDatabaseError;
+            this.errorMessage = errorMessage;
+        }
+
+        /**
+         * Creates a successful DbResult with the given value.
+         *
+         * @param value the successful result value
+         * @return DbResult indicating success
+         */
+        public static <T> DbResult<T> success(T value) {
+            return new DbResult<>(value, false, null);
+        }
+
+        /**
+         * Creates a DbResult indicating a database error.
+         *
+         * @param errorMessage the error message describing what went wrong
+         * @return DbResult indicating database error
+         */
+        public static <T> DbResult<T> databaseError(String errorMessage) {
+            return new DbResult<>(null, true, errorMessage);
+        }
+
+        /**
+         * Gets the value from a successful database operation.
+         *
+         * @return the operation result value, or null if this was an error
+         */
+        public T getValue() {
+            return value;
+        }
+
+        /**
+         * Checks if this result represents a database error.
+         *
+         * @return true if database error occurred, false for success
+         */
+        public boolean isDatabaseError() {
+            return isDatabaseError;
+        }
+
+        /**
+         * Gets the error message from a failed database operation.
+         *
+         * @return the error message, or null if this was successful
+         */
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+
+        /**
+         * Checks if this result represents a successful operation.
+         *
+         * @return true if operation succeeded, false for database error
+         */
+        public boolean isSuccess() {
+            return !isDatabaseError;
         }
     }
 }

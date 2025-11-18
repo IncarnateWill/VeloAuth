@@ -12,15 +12,15 @@ import java.util.concurrent.CompletableFuture;
  * Provides reusable methods for validation, messaging, and async execution.
  */
 public final class CommandHelper {
-    
+
     private CommandHelper() {
         // Utility class - prevent instantiation
     }
-    
+
     /**
      * Validates that command source is a player and returns the player instance.
      *
-     * @param source Command source to validate
+     * @param source   Command source to validate
      * @param messages Messages for error reporting
      * @return Player instance if valid, null if invalid (error already sent)
      */
@@ -31,11 +31,11 @@ public final class CommandHelper {
         }
         return player;
     }
-    
+
     /**
      * Checks if source has admin permission and sends error message if not.
      *
-     * @param source Command source to check
+     * @param source   Command source to check
      * @param messages Messages for error reporting
      * @return true if has permission, false if not (error already sent)
      */
@@ -46,69 +46,69 @@ public final class CommandHelper {
         }
         return true;
     }
-    
+
     /**
      * Sends an error message to the command source.
      *
-     * @param source Command source to send message to
+     * @param source  Command source to send message to
      * @param message Error message to send
      */
     public static void sendError(CommandSource source, String message) {
         source.sendMessage(ValidationUtils.createErrorComponent(message));
     }
-    
+
     /**
      * Sends a localized error message to the command source.
      *
-     * @param source Command source to send message to
+     * @param source   Command source to send message to
      * @param messages Messages for localization
-     * @param key Message key to localize
+     * @param key      Message key to localize
      */
     public static void sendError(CommandSource source, Messages messages, String key) {
         source.sendMessage(ValidationUtils.createErrorComponent(messages.get(key)));
     }
-    
+
     /**
      * Sends a success message to the command source.
      *
-     * @param source Command source to send message to
+     * @param source  Command source to send message to
      * @param message Success message to send
      */
     public static void sendSuccess(CommandSource source, String message) {
         source.sendMessage(ValidationUtils.createSuccessComponent(message));
     }
-    
+
     /**
      * Sends a localized success message to the command source.
      *
-     * @param source Command source to send message to
+     * @param source   Command source to send message to
      * @param messages Messages for localization
-     * @param key Message key to localize
+     * @param key      Message key to localize
      */
     public static void sendSuccess(CommandSource source, Messages messages, String key) {
         source.sendMessage(ValidationUtils.createSuccessComponent(messages.get(key)));
     }
-    
+
     /**
      * Sends a warning message to the command source.
      *
-     * @param source Command source to send message to
+     * @param source  Command source to send message to
      * @param message Warning message to send
      */
     public static void sendWarning(CommandSource source, String message) {
         source.sendMessage(ValidationUtils.createWarningComponent(message));
     }
-    
+
     /**
      * Executes a command asynchronously with standard exception handling.
      *
-     * @param task Command task to execute
+     * @param task     Command task to execute
      * @param messages Messages for error reporting
-     * @param source Command source for error messages
+     * @param source   Command source for error messages
      * @param errorKey Message key for database errors
      */
-    public static void runAsyncCommand(Runnable task, Messages messages, 
-                                      CommandSource source, String errorKey) {
+    public static void runAsyncCommand(Runnable task, Messages messages,
+                                       CommandSource source, String errorKey) {
         // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
         CompletableFuture.runAsync(task, VirtualThreadExecutorProvider.getVirtualExecutor())
                 .exceptionally(throwable -> {
@@ -116,18 +116,18 @@ public final class CommandHelper {
                     return null;
                 });
     }
-    
+
     /**
      * Executes a command asynchronously with timeout and standard exception handling.
      *
-     * @param task Command task to execute
-     * @param messages Messages for error reporting
-     * @param source Command source for error messages
-     * @param errorKey Message key for database errors
+     * @param task       Command task to execute
+     * @param messages   Messages for error reporting
+     * @param source     Command source for error messages
+     * @param errorKey   Message key for database errors
      * @param timeoutKey Message key for timeout errors
      */
-    public static void runAsyncCommandWithTimeout(Runnable task, Messages messages, 
-                                                 CommandSource source, String errorKey, String timeoutKey) {
+    public static void runAsyncCommandWithTimeout(Runnable task, Messages messages,
+                                                  CommandSource source, String errorKey, String timeoutKey) {
         // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
         CompletableFuture.runAsync(task, VirtualThreadExecutorProvider.getVirtualExecutor())
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)

@@ -13,20 +13,6 @@ import java.net.InetAddress;
  */
 public final class SecurityHelper {
 
-    /**
-     * Security context containing all parameters needed for security checks.
-     * Reduces parameter count and improves maintainability.
-     */
-    public record SecurityContext(
-            IPRateLimiter ipRateLimiter,
-            AuthCache authCache,
-            InetAddress playerAddress,
-            Logger logger,
-            Marker securityMarker,
-            String playerName,
-            String operationType
-    ) {}
-
     private SecurityHelper() {
         // Utility class - prevent instantiation
     }
@@ -178,13 +164,13 @@ public final class SecurityHelper {
     public static SecurityCheckResult performSecurityChecks(SecurityContext context) {
 
         // Check rate limiting
-        if (checkRateLimit(context.ipRateLimiter(), context.playerAddress(), context.logger(), 
+        if (checkRateLimit(context.ipRateLimiter(), context.playerAddress(), context.logger(),
                 context.securityMarker(), context.playerName(), context.operationType())) {
             return new SecurityCheckResult(false, "rate_limited", "Zablokowany za zbyt wiele prób");
         }
 
         // Check brute force protection
-        if (checkBruteForceBlock(context.authCache(), context.playerAddress(), context.logger(), 
+        if (checkBruteForceBlock(context.authCache(), context.playerAddress(), context.logger(),
                 context.securityMarker(), context.operationType())) {
             return new SecurityCheckResult(false, "brute_force_blocked", "Zablokowany za brute force");
         }
@@ -196,8 +182,23 @@ public final class SecurityHelper {
     }
 
     /**
-         * Result of security checks with standardized format.
-         */
-        public record SecurityCheckResult(boolean passed, String reason, String message) {
+     * Security context containing all parameters needed for security checks.
+     * Reduces parameter count and improves maintainability.
+     */
+    public record SecurityContext(
+            IPRateLimiter ipRateLimiter,
+            AuthCache authCache,
+            InetAddress playerAddress,
+            Logger logger,
+            Marker securityMarker,
+            String playerName,
+            String operationType
+    ) {
+    }
+
+    /**
+     * Result of security checks with standardized format.
+     */
+    public record SecurityCheckResult(boolean passed, String reason, String message) {
     }
 }

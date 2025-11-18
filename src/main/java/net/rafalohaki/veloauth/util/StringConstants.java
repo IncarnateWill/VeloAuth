@@ -96,6 +96,7 @@ public final class StringConstants {
     public static final String CACHE_ERROR_RESET_BRUTE_FORCE = "[CACHE_ERROR] Błąd resetowania prób brute force dla IP: {}";
     public static final String CACHE_CLEANUP_COMPLETE = "[CACHE_CLEANUP] Kompletne czyszczenie cache dla gracza {}";
     public static final String CACHE_ERROR_CLEANUP = "[CACHE_ERROR] Błąd podczas kompletnego czyszczenia cache dla gracza: {}";
+
     private StringConstants() {
         // Utility class - prevent instantiation
     }

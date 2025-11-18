@@ -92,6 +92,24 @@ public class AuthListener {
     }
 
     /**
+     * Resolves the block reason for unauthorized connections.
+     * Replaces nested ternary with clear if/else logic.
+     *
+     * @param isAuthorized     Whether player is authorized
+     * @param hasActiveSession Whether player has active session
+     * @return Human-readable reason string
+     */
+    private static String resolveBlockReason(boolean isAuthorized, boolean hasActiveSession) {
+        if (!isAuthorized) {
+            return "nieautoryzowany";
+        }
+        if (!hasActiveSession) {
+            return "brak aktywnej sesji";
+        }
+        return "UUID mismatch";
+    }
+
+    /**
      * ✅ KLUCZOWY EVENT - PreLoginEvent
      * Tutaj sprawdzamy premium PRZED weryfikacją UUID!
      * Jeśli premium → forceOnlineMode() = Velocity zweryfikuje
@@ -211,9 +229,9 @@ public class AuthListener {
         try {
             // CRITICAL SECURITY: Block login attempts until plugin is fully initialized
             if (!plugin.isInitialized()) {
-                logger.warn("🔒 BLOKADA STARTU: Gracz {} próbował zalogować się przed pełną inicjalizacją VeloAuth - blokada logowania", 
+                logger.warn("🔒 BLOKADA STARTU: Gracz {} próbował zalogować się przed pełną inicjalizacją VeloAuth - blokada logowania",
                         playerName);
-                
+
                 event.setResult(LoginEvent.ComponentResult.denied(
                         Component.text("VeloAuth się uruchamia. Spróbuj zalogować się ponownie za chwilę.",
                                 NamedTextColor.RED)
@@ -575,10 +593,10 @@ public class AuthListener {
             return CompletableFuture.supplyAsync(() -> {
                 try {
                     var dbResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-                    
+
                     // CRITICAL: Fail-secure on database errors
                     if (dbResult.isDatabaseError()) {
-                        logger.error(SECURITY_MARKER, "[DATABASE ERROR] UUID verification failed for {}: {}", 
+                        logger.error(SECURITY_MARKER, "[DATABASE ERROR] UUID verification failed for {}: {}",
                                 player.getUsername(), dbResult.getErrorMessage());
                         // Remove from cache to prevent unauthorized access
                         authCache.removeAuthorizedPlayer(player.getUniqueId());
@@ -621,24 +639,6 @@ public class AuthListener {
             authCache.endSession(player.getUniqueId());
             return false;
         }
-    }
-
-    /**
-     * Resolves the block reason for unauthorized connections.
-     * Replaces nested ternary with clear if/else logic.
-     *
-     * @param isAuthorized Whether player is authorized
-     * @param hasActiveSession Whether player has active session
-     * @return Human-readable reason string
-     */
-    private static String resolveBlockReason(boolean isAuthorized, boolean hasActiveSession) {
-        if (!isAuthorized) {
-            return "nieautoryzowany";
-        }
-        if (!hasActiveSession) {
-            return "brak aktywnej sesji";
-        }
-        return "UUID mismatch";
     }
 
     /**

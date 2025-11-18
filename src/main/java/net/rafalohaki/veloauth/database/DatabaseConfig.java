@@ -171,7 +171,8 @@ public final class DatabaseConfig {
      * @param postgreSQLSettings   Ustawienia PostgreSQL (może być null)
      * @return DatabaseConfig z HikariCP
      */
-    @SuppressWarnings("java:S107") // SonarCloud false positive: all 11 parameters required for complete HikariCP configuration
+    @SuppressWarnings("java:S107")
+    // SonarCloud false positive: all 11 parameters required for complete HikariCP configuration
     public static DatabaseConfig forRemoteWithHikari(String storageType, String hostname,
                                                      int port, String database,
                                                      String user, String password,

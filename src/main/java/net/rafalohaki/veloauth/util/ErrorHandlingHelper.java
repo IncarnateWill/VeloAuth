@@ -65,12 +65,12 @@ public final class ErrorHandlingHelper {
     /**
      * Handles database operation errors consistently.
      *
-     * @param logger         The logger to use
-     * @param marker         The marker for database operations
-     * @param operationName  Name of the database operation
-     * @param player         The player to send error to
-     * @param e              The exception that occurred
-     * @param messages       The i18n messages system
+     * @param logger        The logger to use
+     * @param marker        The marker for database operations
+     * @param operationName Name of the database operation
+     * @param player        The player to send error to
+     * @param e             The exception that occurred
+     * @param messages      The i18n messages system
      */
     public static void handleDatabaseError(Logger logger, Marker marker,
                                            String operationName, Player player,

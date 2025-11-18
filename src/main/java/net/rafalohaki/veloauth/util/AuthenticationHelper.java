@@ -17,48 +17,6 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class AuthenticationHelper {
 
-    /**
-     * Authentication context containing parameters for registration operations.
-     * Reduces parameter count and improves maintainability.
-     */
-    public record AuthenticationContext(
-            DatabaseManager databaseManager,
-            String username,
-            String password,
-            String playerIp,
-            String playerUuid,
-            Settings settings,
-            Logger logger,
-            Marker dbMarker,
-            Messages messages
-    ) {}
-
-    /**
-     * Password change context containing parameters for password change operations.
-     */
-    public record PasswordChangeContext(
-            DatabaseManager databaseManager,
-            String username,
-            String oldPassword,
-            String newPassword,
-            Settings settings,
-            Logger logger,
-            Marker dbMarker,
-            Messages messages
-    ) {}
-
-    /**
-     * Account deletion context containing parameters for account deletion operations.
-     */
-    public record AccountDeletionContext(
-            DatabaseManager databaseManager,
-            String username,
-            String password,
-            Logger logger,
-            Marker dbMarker,
-            Messages messages
-    ) {}
-
     private AuthenticationHelper() {
         // Utility class - prevent instantiation
     }
@@ -115,14 +73,14 @@ public final class AuthenticationHelper {
                 // Check if player already exists
                 String lowercaseNick = context.username().toLowerCase();
                 var existingResult = context.databaseManager().findPlayerByNickname(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (existingResult.isDatabaseError()) {
-                    context.logger().error(context.dbMarker(), "Database error during registration check for {}: {}", 
+                    context.logger().error(context.dbMarker(), "Database error during registration check for {}: {}",
                             context.username(), existingResult.getErrorMessage());
                     return null;
                 }
-                
+
                 RegisteredPlayer existingPlayer = existingResult.getValue();
                 if (existingPlayer != null) {
                     context.logger().debug(context.dbMarker(), context.messages().get("player.already_exists"), context.username());
@@ -137,14 +95,14 @@ public final class AuthenticationHelper {
 
                 // Save to database
                 var saveResult = context.databaseManager().savePlayer(newPlayer).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (saveResult.isDatabaseError()) {
-                    context.logger().error(context.dbMarker(), "Database error during registration save for {}: {}", 
+                    context.logger().error(context.dbMarker(), "Database error during registration save for {}: {}",
                             context.username(), saveResult.getErrorMessage());
                     return null;
                 }
-                
+
                 boolean saved = saveResult.getValue();
                 if (!saved) {
                     context.logger().error(context.dbMarker(), context.messages().get("player.save.failed"), context.username());
@@ -180,27 +138,27 @@ public final class AuthenticationHelper {
                 // Find player in database
                 String lowercaseNick = username.toLowerCase();
                 var playerResult = databaseManager.findPlayerByNickname(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (playerResult.isDatabaseError()) {
-                    logger.error(dbMarker, "Database error during login lookup for {}: {}", 
+                    logger.error(dbMarker, "Database error during login lookup for {}: {}",
                             username, playerResult.getErrorMessage());
                     return null;
                 }
-                
+
                 RegisteredPlayer registeredPlayer = playerResult.getValue();
                 if (registeredPlayer == null) {
                     if (logger.isDebugEnabled()) {
-                    logger.debug(dbMarker, messages.get(StringConstants.PLAYER_NOT_FOUND), username);
-                }
+                        logger.debug(dbMarker, messages.get(StringConstants.PLAYER_NOT_FOUND), username);
+                    }
                     return null;
                 }
 
                 // Verify password
                 if (!verifyPassword(password, registeredPlayer.getHash())) {
                     if (logger.isDebugEnabled()) {
-                    logger.debug(dbMarker, messages.get("player.password.invalid"), username);
-                }
+                        logger.debug(dbMarker, messages.get("player.password.invalid"), username);
+                    }
                     return null;
                 }
 
@@ -227,14 +185,14 @@ public final class AuthenticationHelper {
                 // Find player in database
                 String lowercaseNick = context.username().toLowerCase();
                 var playerResult = context.databaseManager().findPlayerByNickname(lowercaseNick).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (playerResult.isDatabaseError()) {
-                    context.logger().error(context.dbMarker(), "Database error during password change lookup for {}: {}", 
+                    context.logger().error(context.dbMarker(), "Database error during password change lookup for {}: {}",
                             context.username(), playerResult.getErrorMessage());
                     return false;
                 }
-                
+
                 RegisteredPlayer registeredPlayer = playerResult.getValue();
                 if (registeredPlayer == null) {
                     context.logger().debug(context.dbMarker(), context.messages().get(StringConstants.PLAYER_NOT_FOUND), context.username());
@@ -253,14 +211,14 @@ public final class AuthenticationHelper {
                 // Update player
                 registeredPlayer.setHash(newHashedPassword);
                 var saveResult = context.databaseManager().savePlayer(registeredPlayer).join();
-                
+
                 // CRITICAL: Fail-secure on database errors
                 if (saveResult.isDatabaseError()) {
-                    context.logger().error(context.dbMarker(), "Database error during password change save for {}: {}", 
+                    context.logger().error(context.dbMarker(), "Database error during password change save for {}: {}",
                             context.username(), saveResult.getErrorMessage());
                     return false;
                 }
-                
+
                 boolean saved = saveResult.getValue();
                 if (saved) {
                     context.logger().info(context.dbMarker(), context.messages().get("player.password.changed.success"), context.username());
@@ -287,14 +245,14 @@ public final class AuthenticationHelper {
         // Find player in database
         String lowercaseNick = context.username().toLowerCase();
         var playerResult = context.databaseManager().findPlayerByNickname(lowercaseNick).join();
-        
+
         // CRITICAL: Fail-secure on database errors
         if (playerResult.isDatabaseError()) {
-            context.logger().error(context.dbMarker(), "Database error during account deletion lookup for {}: {}", 
+            context.logger().error(context.dbMarker(), "Database error during account deletion lookup for {}: {}",
                     context.username(), playerResult.getErrorMessage());
             return null;
         }
-        
+
         RegisteredPlayer registeredPlayer = playerResult.getValue();
         if (registeredPlayer == null) {
             if (context.logger().isDebugEnabled()) {
@@ -317,21 +275,21 @@ public final class AuthenticationHelper {
     /**
      * Executes the actual deletion operation.
      *
-     * @param context Account deletion context
+     * @param context       Account deletion context
      * @param lowercaseNick Lowercase nickname for database operation
      * @return true if deletion successful, false otherwise
      */
     private static boolean executeDeletion(AccountDeletionContext context, String lowercaseNick) {
         // Delete player
         var deleteResult = context.databaseManager().deletePlayer(lowercaseNick).join();
-        
+
         // CRITICAL: Fail-secure on database errors
         if (deleteResult.isDatabaseError()) {
-            context.logger().error(context.dbMarker(), "Database error during account deletion for {}: {}", 
+            context.logger().error(context.dbMarker(), "Database error during account deletion for {}: {}",
                     context.username(), deleteResult.getErrorMessage());
             return false;
         }
-        
+
         boolean deleted = deleteResult.getValue();
         if (deleted) {
             context.logger().info(context.dbMarker(), context.messages().get("player.account.deleted.success"), context.username());
@@ -367,5 +325,50 @@ public final class AuthenticationHelper {
                 return false;
             }
         });
+    }
+
+    /**
+     * Authentication context containing parameters for registration operations.
+     * Reduces parameter count and improves maintainability.
+     */
+    public record AuthenticationContext(
+            DatabaseManager databaseManager,
+            String username,
+            String password,
+            String playerIp,
+            String playerUuid,
+            Settings settings,
+            Logger logger,
+            Marker dbMarker,
+            Messages messages
+    ) {
+    }
+
+    /**
+     * Password change context containing parameters for password change operations.
+     */
+    public record PasswordChangeContext(
+            DatabaseManager databaseManager,
+            String username,
+            String oldPassword,
+            String newPassword,
+            Settings settings,
+            Logger logger,
+            Marker dbMarker,
+            Messages messages
+    ) {
+    }
+
+    /**
+     * Account deletion context containing parameters for account deletion operations.
+     */
+    public record AccountDeletionContext(
+            DatabaseManager databaseManager,
+            String username,
+            String password,
+            Logger logger,
+            Marker dbMarker,
+            Messages messages
+    ) {
     }
 }

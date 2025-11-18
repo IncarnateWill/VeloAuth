@@ -129,10 +129,10 @@ public class Settings {
         String defaultConfig = """
                 # VeloAuth Configuration
                 # Complete Velocity Authentication Plugin
-
+                
                 # Language configuration (supported: en, pl)
                 language: en # Plugin language: en = English, pl = Polski
-
+                
                 # Debug settings (enable for detailed logging)
                 debug-enabled: false # Set to true for development/debugging
                 
@@ -565,7 +565,7 @@ public class Settings {
             language = "en";
             return;
         }
-        
+
         String normalizedLang = language.toLowerCase().trim();
         if (!"en".equals(normalizedLang) && !"pl".equals(normalizedLang)) {
             logger.warn("Unsupported language '{}', using default 'en'. Supported languages: en, pl", language);

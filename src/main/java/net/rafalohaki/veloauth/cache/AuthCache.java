@@ -363,9 +363,9 @@ public class AuthCache {
                 premiumCache.put(nickname.toLowerCase(), entry);
 
                 if (logger.isDebugEnabled()) {
-                logger.debug(messages.get("cache.debug.premium.added"),
-                        nickname, premiumUuid != null);
-            }
+                    logger.debug(messages.get("cache.debug.premium.added"),
+                            nickname, premiumUuid != null);
+                }
 
             } finally {
                 cacheLock.unlock();
@@ -536,8 +536,8 @@ public class AuthCache {
                 ActiveSession session = new ActiveSession(uuid, nickname, ip);
                 activeSessions.put(uuid, session);
                 if (logger.isDebugEnabled()) {
-                logger.debug(messages.get("cache.debug.session.started"), nickname, uuid, ip);
-            }
+                    logger.debug(messages.get("cache.debug.session.started"), nickname, uuid, ip);
+                }
 
             } finally {
                 cacheLock.unlock();

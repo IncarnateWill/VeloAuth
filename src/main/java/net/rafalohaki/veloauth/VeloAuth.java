@@ -314,7 +314,7 @@ public class VeloAuth {
                 settings.getBruteForceTimeoutMinutes());
         logger.info(messages.get("config.display.picolimbo_server"), settings.getPicoLimboServerName());
         logger.info(messages.get("config.display.bcrypt_cost"), settings.getBcryptCost());
-        logger.info(messages.get("config.display.premium_check"), 
+        logger.info(messages.get("config.display.premium_check"),
                 settings.isPremiumCheckEnabled() ? messages.get("premium.check_enabled") : messages.get("premium.check_disabled"));
 
         // Statystyki cache
