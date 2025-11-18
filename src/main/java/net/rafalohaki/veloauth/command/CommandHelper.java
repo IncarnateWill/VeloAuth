@@ -3,7 +3,6 @@ package net.rafalohaki.veloauth.command;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.rafalohaki.veloauth.i18n.Messages;
-import net.rafalohaki.veloauth.command.ValidationUtils;
 import net.rafalohaki.veloauth.util.VirtualThreadExecutorProvider;
 
 import java.util.concurrent.CompletableFuture;
@@ -104,12 +103,11 @@ public final class CommandHelper {
      * Executes a command asynchronously with standard exception handling.
      *
      * @param task Command task to execute
-     * @param playerName Player name for error reporting
      * @param messages Messages for error reporting
      * @param source Command source for error messages
      * @param errorKey Message key for database errors
      */
-    public static void runAsyncCommand(Runnable task, String playerName, Messages messages, 
+    public static void runAsyncCommand(Runnable task, Messages messages, 
                                       CommandSource source, String errorKey) {
         // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
         CompletableFuture.runAsync(task, VirtualThreadExecutorProvider.getVirtualExecutor())
@@ -123,13 +121,12 @@ public final class CommandHelper {
      * Executes a command asynchronously with timeout and standard exception handling.
      *
      * @param task Command task to execute
-     * @param playerName Player name for error reporting
      * @param messages Messages for error reporting
      * @param source Command source for error messages
      * @param errorKey Message key for database errors
      * @param timeoutKey Message key for timeout errors
      */
-    public static void runAsyncCommandWithTimeout(Runnable task, String playerName, Messages messages, 
+    public static void runAsyncCommandWithTimeout(Runnable task, Messages messages, 
                                                  CommandSource source, String errorKey, String timeoutKey) {
         // skipcq: JAVA-W1087 - Future handled with exceptionally, fire-and-forget operation
         CompletableFuture.runAsync(task, VirtualThreadExecutorProvider.getVirtualExecutor())

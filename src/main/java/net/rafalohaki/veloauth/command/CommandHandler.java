@@ -13,7 +13,6 @@ import net.rafalohaki.veloauth.model.CachedAuthUser;
 import net.rafalohaki.veloauth.model.RegisteredPlayer;
 import net.rafalohaki.veloauth.constants.StringConstants;
 import net.rafalohaki.veloauth.util.SecurityHelper;
-import net.rafalohaki.veloauth.util.VirtualThreadExecutorProvider;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -21,8 +20,6 @@ import org.slf4j.MarkerFactory;
 import java.net.InetAddress;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Handler komend autoryzacji VeloAuth.
@@ -102,16 +99,7 @@ public class CommandHandler {
         logger.info("Komendy wyrejestrowane");
     }
 
-    /**
-     * Resets security counters (brute force and IP rate limiter) for successful authentication.
-     * Centralized utility to avoid code duplication across login/registration flows.
-     */
-    private void resetSecurityCounters(InetAddress playerAddress) {
-        if (playerAddress != null) {
-            authCache.resetLoginAttempts(playerAddress);
-            ipRateLimiter.reset(playerAddress);
-        }
-    }
+    
 
     /**
      * Handles database errors consistently across all commands.
@@ -182,7 +170,7 @@ public class CommandHandler {
 
             // Asynchroniczne logowanie z Virtual Threads
             CommandHelper.runAsyncCommand(() -> processLogin(player, password, playerAddress),
-                    player.getUsername(), messages, source, StringConstants.ERROR_DATABASE_QUERY);
+                    messages, source, StringConstants.ERROR_DATABASE_QUERY);
         }
 
         private void processLogin(Player player, String password, InetAddress playerAddress) {
@@ -286,6 +274,17 @@ public class CommandHandler {
                         player.getUsername(), ValidationUtils.getPlayerIp(player));
             }
         }
+
+        /**
+         * Resets security counters (brute force and IP rate limiter) for successful authentication.
+         * Centralized utility to avoid code duplication across login/registration flows.
+         */
+        private void resetSecurityCounters(InetAddress playerAddress) {
+            if (playerAddress != null) {
+                authCache.resetLoginAttempts(playerAddress);
+                ipRateLimiter.reset(playerAddress);
+            }
+        }
     }
 
     /**
@@ -341,7 +340,7 @@ public class CommandHandler {
 
             // Asynchroniczna rejestracja z Virtual Threads
             CommandHelper.runAsyncCommandWithTimeout(() -> processRegistration(player, password),
-                    player.getUsername(), messages, source, StringConstants.ERROR_DATABASE_QUERY, "auth.registration.timeout");
+                    messages, source, StringConstants.ERROR_DATABASE_QUERY, "auth.registration.timeout");
         }
 
         private void processRegistration(Player player, String password) {
@@ -487,7 +486,7 @@ public class CommandHandler {
 
             // Asynchroniczna zmiana hasła z Virtual Threads
             CommandHelper.runAsyncCommand(() -> processPasswordChange(player, oldPassword, newPassword),
-                    player.getUsername(), messages, source, StringConstants.ERROR_DATABASE_QUERY);
+                    messages, source, StringConstants.ERROR_DATABASE_QUERY);
         }
 
         private void processPasswordChange(Player player, String oldPassword, String newPassword) {
@@ -617,7 +616,7 @@ public class CommandHandler {
 
             // Asynchroniczne usuwanie konta z Virtual Threads
             CommandHelper.runAsyncCommand(() -> processAdminUnregistration(source, nickname),
-                    nickname, messages, source, StringConstants.ERROR_DATABASE_QUERY);
+                    messages, source, StringConstants.ERROR_DATABASE_QUERY);
         }
 
         private void processAdminUnregistration(CommandSource source, String nickname) {

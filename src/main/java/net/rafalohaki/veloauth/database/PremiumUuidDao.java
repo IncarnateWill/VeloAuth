@@ -25,7 +25,7 @@ public class PremiumUuidDao {
     private static final Marker DB_MARKER = MarkerFactory.getMarker("DATABASE");
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(PremiumUuidDao.class);
 
-    private final Dao<PremiumUuid, String> premiumUuidDao;
+    private final Dao<PremiumUuid, String> dao;
     private final ConnectionSource connectionSource;
 
     /**
@@ -36,7 +36,7 @@ public class PremiumUuidDao {
      */
     public PremiumUuidDao(ConnectionSource connectionSource) throws SQLException {
         this.connectionSource = connectionSource;
-        this.premiumUuidDao = DaoManager.createDao(connectionSource, PremiumUuid.class);
+        this.dao = DaoManager.createDao(connectionSource, PremiumUuid.class);
         logger.debug(DB_MARKER, "PremiumUuidDao zainicjalizowany");
     }
 
@@ -48,7 +48,7 @@ public class PremiumUuidDao {
      */
     public Optional<PremiumUuid> findByNickname(String nickname) {
         try {
-            List<PremiumUuid> results = premiumUuidDao.queryBuilder()
+            List<PremiumUuid> results = dao.queryBuilder()
                     .where()
                     .eq("NICKNAME", nickname)
                     .query();
@@ -77,7 +77,7 @@ public class PremiumUuidDao {
      */
     public Optional<PremiumUuid> findByUuid(UUID uuid) {
         try {
-            PremiumUuid result = premiumUuidDao.queryForId(uuid.toString());
+            PremiumUuid result = dao.queryForId(uuid.toString());
             if (result == null) {
                 logger.debug(DB_MARKER, "Nie znaleziono premium UUID dla UUID: {}", uuid);
                 return Optional.empty();
@@ -116,11 +116,11 @@ public class PremiumUuidDao {
 
                         // Premium gracze omijają AUTH table - tylko PREMIUM_UUIDS cache
                         premiumUuid.updateNickname(nickname);
-                        premiumUuidDao.update(premiumUuid);
+                        dao.update(premiumUuid);
                     } else {
                         // Tylko aktualizuj timestamp
                         premiumUuid.updateLastSeen();
-                        premiumUuidDao.update(premiumUuid);
+                        dao.update(premiumUuid);
                         logger.debug(DB_MARKER, "Zaktualizowano last_seen dla {}: {}", nickname, uuid);
                     }
                 } else {
@@ -130,12 +130,12 @@ public class PremiumUuidDao {
                         logger.warn(DB_MARKER, "Konflikt nickname! {} jest już używany przez {}, próba zapisu z {}",
                                 nickname, byNickname.get().getUuid(), uuid);
                         // Usuń stary wpis i zapisz nowy (UUID jest autorytatywne)
-                        premiumUuidDao.deleteById(byNickname.get().getUuidString());
+                        dao.deleteById(byNickname.get().getUuidString());
                     }
 
                     // Zapisz nowy wpis
                     PremiumUuid premiumUuid = new PremiumUuid(uuid, nickname);
-                    premiumUuidDao.create(premiumUuid);
+                    dao.create(premiumUuid);
                     logger.info(DB_MARKER, "Zapisano nowy premium UUID: {} -> {}", nickname, uuid);
                 }
 
@@ -158,7 +158,7 @@ public class PremiumUuidDao {
         try {
             long cutoffTime = System.currentTimeMillis() - (ttlMinutes * 60 * 1000);
 
-            DeleteBuilder<PremiumUuid, String> deleteBuilder = premiumUuidDao.deleteBuilder();
+            DeleteBuilder<PremiumUuid, String> deleteBuilder = dao.deleteBuilder();
             deleteBuilder.where().lt("LAST_SEEN", cutoffTime);
             int deleted = deleteBuilder.delete();
 
@@ -181,7 +181,7 @@ public class PremiumUuidDao {
      */
     public long getTotalCount() {
         try {
-            return premiumUuidDao.countOf();
+            return dao.countOf();
         } catch (SQLException e) {
             logger.error(DB_MARKER, "Błąd podczas liczenia wpisów premium UUID", e);
             return 0;
@@ -195,7 +195,7 @@ public class PremiumUuidDao {
      */
     public List<PremiumUuid> findAll() {
         try {
-            return premiumUuidDao.queryForAll();
+            return dao.queryForAll();
         } catch (SQLException e) {
             logger.error(DB_MARKER, "Błąd podczas pobierania wszystkich wpisów premium UUID", e);
             return new ArrayList<>();
