@@ -122,3 +122,4 @@ sonarqube_mcp_instructions.mdc
 connectedMode.json
 refactor/*
 .trae/*
+codacy.yaml
