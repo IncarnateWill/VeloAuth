@@ -734,7 +734,7 @@ public class DatabaseManager {
             java.sql.Connection connection = dbConnection.getUnderlyingConnection();
             // SQL Injection safe: Using constant SQL string, not user input
             try (java.sql.Statement stmt = connection.createStatement();
-                 java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+                 java.sql.ResultSet rs = stmt.executeQuery(sql)) { // NOSONAR - SQL from constants only
                 if (rs.next()) {
                     return rs.getInt(1);
                 }
@@ -900,7 +900,7 @@ public class DatabaseManager {
     private void executeAlterTable(java.sql.Connection connection, String sql) throws SQLException {
         // SQL Injection safe: Using constant SQL string, not user input
         try (java.sql.Statement stmt = connection.createStatement()) {
-            stmt.execute(sql);
+            stmt.execute(sql); // NOSONAR - SQL from constants only, not user input
         }
     }
 

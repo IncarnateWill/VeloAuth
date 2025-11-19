@@ -31,7 +31,7 @@ public class CommandHandler {
     private static final String COMMAND_LOGIN = "login";
     private static final String COMMAND_REGISTER = "register";
     @SuppressWarnings("java:S2068") // Not a password - this is a command name constant
-    private static final String COMMAND_CHANGE_PASSWORD = "changepassword";
+    private static final String COMMAND_CHANGE_PASSWORD = "changepassword"; // NOSONAR - Command name, not password
     private static final String COMMAND_UNREGISTER = "unregister";
     private static final String COMMAND_VAUTH = "vauth";
 

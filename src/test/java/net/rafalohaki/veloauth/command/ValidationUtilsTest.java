@@ -40,7 +40,7 @@ class ValidationUtilsTest {
     @SuppressWarnings("java:S2068") // Test passwords are test data, not production credentials
     void testValidatePassword_ValidPassword_ReturnsSuccess() {
         // Using TestValidationSettings with min=6, max=32
-        String validPassword = "testPassword123"; // Test password for validation
+        String validPassword = "testPassword123"; // NOSONAR - Test password for validation
 
         ValidationUtils.ValidationResult result = ValidationUtils.validatePassword(validPassword, mockSettings);
 
@@ -68,7 +68,7 @@ class ValidationUtilsTest {
     @SuppressWarnings("java:S2068") // Test passwords are test data, not production credentials
     void testValidatePassword_TooShort_ReturnsError() {
         // Using TestValidationSettings with min=6
-        String shortPassword = "test";
+        String shortPassword = "test"; // NOSONAR - Test password
 
         ValidationUtils.ValidationResult result = ValidationUtils.validatePassword(shortPassword, mockSettings);
 
@@ -91,8 +91,8 @@ class ValidationUtilsTest {
     @Test
     @SuppressWarnings("java:S2068") // Test passwords are test data, not production credentials
     void testValidatePasswordMatch_MatchingPasswords_ReturnsSuccess() {
-        String password = "test123";
-        String confirmPassword = "test123";
+        String password = "test123"; // NOSONAR - Test data
+        String confirmPassword = "test123"; // NOSONAR - Test data
 
         ValidationUtils.ValidationResult result = ValidationUtils.validatePasswordMatch(password, confirmPassword);
 
@@ -103,8 +103,8 @@ class ValidationUtilsTest {
     @Test
     @SuppressWarnings("java:S2068") // Test passwords are test data, not production credentials
     void testValidatePasswordMatch_NonMatchingPasswords_ReturnsError() {
-        String password = "testPassword123";
-        String confirmPassword = "differentPassword";
+        String password = "testPassword123"; // NOSONAR - Test data
+        String confirmPassword = "differentPassword"; // NOSONAR - Test data
 
         ValidationUtils.ValidationResult result = ValidationUtils.validatePasswordMatch(password, confirmPassword);
 
@@ -116,8 +116,8 @@ class ValidationUtilsTest {
     @SuppressWarnings("java:S5164") // Using localhost for unit test - no SSRF risk
     void testGetPlayerIp_ValidInetSocketAddress_ReturnsIp() throws java.net.UnknownHostException {
         String expectedIp = "127.0.0.1"; // Use localhost for testing
-        InetAddress address = InetAddress.getByName(expectedIp);
-        InetSocketAddress socketAddress = new InetSocketAddress(address, 25565);
+        InetAddress address = InetAddress.getByName(expectedIp); // NOSONAR - Localhost test only
+        InetSocketAddress socketAddress = new InetSocketAddress(address, 25565); // NOSONAR - Test data
         when(mockPlayer.getRemoteAddress()).thenReturn(socketAddress);
 
         String result = ValidationUtils.getPlayerIp(mockPlayer);

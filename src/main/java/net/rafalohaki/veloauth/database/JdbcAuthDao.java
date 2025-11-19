@@ -251,14 +251,14 @@ public final class JdbcAuthDao {
         String conflictQuery = "SELECT NICKNAME, HASH, IP, LOGINIP, UUID, REGDATE, LOGINDATE, " +
                               "PREMIUMUUID, TOTPTOKEN, ISSUEDTIME, LOWERCASENICKNAME, " +
                               "CONFLICT_MODE, CONFLICT_TIMESTAMP, ORIGINAL_NICKNAME " +
-                              "FROM " + table("AUTH") + WHERE_CLAUSE + column("CONFLICT_MODE") + " = ?";
+                              "FROM " + table("AUTH") + WHERE_CLAUSE + column("CONFLICT_MODE") + " = ?"; // NOSONAR - SQL from constants
         
         try (Connection connection = openConnection();
-             PreparedStatement statement = connection.prepareStatement(conflictQuery)) {
+             PreparedStatement statement = connection.prepareStatement(conflictQuery)) { // NOSONAR - Uses PreparedStatement with parameters
             
             statement.setBoolean(1, true);
             
-            try (ResultSet resultSet = statement.executeQuery()) {
+            try (ResultSet resultSet = statement.executeQuery()) { // NOSONAR - Parameterized query, SQL injection safe
                 List<RegisteredPlayer> conflicts = new ArrayList<>();
                 while (resultSet.next()) {
                     RegisteredPlayer player = mapPlayerWithConflict(resultSet);

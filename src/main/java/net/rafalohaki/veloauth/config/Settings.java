@@ -35,7 +35,7 @@ public class Settings {
     private String databaseName = "veloauth";
     private String databaseUser = "veloauth";
     @SuppressWarnings("java:S2068") // Not a hardcoded password - configuration placeholder loaded from config.yml
-    private String databasePassword = ""; // Default: empty - must be configured
+    private String databasePassword = ""; // NOSONAR - Config placeholder, loaded from config.yml
     private String databaseConnectionUrl = null; // Optional full connection URL
     private String databaseConnectionParameters = ""; // Additional connection params
     private int databaseConnectionPoolSize = 20;
@@ -832,7 +832,7 @@ public class Settings {
         private String sslKey = "";
         private String sslRootCert = "";
         @SuppressWarnings("java:S2068") // Not a hardcoded password - SSL configuration placeholder
-        private String sslPassword = "";
+        private String sslPassword = ""; // NOSONAR - SSL config placeholder
 
         public boolean isSslEnabled() {
             return sslEnabled;

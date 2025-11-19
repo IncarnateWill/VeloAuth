@@ -215,7 +215,7 @@ public final class DatabaseConfig {
         try {
             // Safe: Loading trusted JDBC driver from internal configuration constants only (DatabaseType enum)
             // Not user-controllable - driverClass comes from hardcoded DatabaseType enum values
-            Class.forName(driverClass);
+            Class.forName(driverClass); // NOSONAR - Driver from trusted DatabaseType enum only
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("Nie znaleziono sterownika JDBC: " + driverClass, e);
         }
@@ -625,7 +625,7 @@ public final class DatabaseConfig {
                 ", port=" + port +
                 ", database='" + database + '\'' +
                 ", user='" + user + '\'' +
-                ", password='***'" + // Nie loguj hasła!
+                ", password='***'" + // NOSONAR - Masked password, not real credential
                 ", connectionPoolSize=" + connectionPoolSize +
                 ", jdbcUrl='" + jdbcUrl + '\'' +
                 ", isLocal=" + isLocalDatabase() +
